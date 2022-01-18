@@ -2,11 +2,19 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
+import { HttpExceptionFilter } from './common/http-exception.filter';
+import { ResponseInterceptor } from './common/response.interceptor';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // 注册全局错误过滤器
+  app.useGlobalFilters(new HttpExceptionFilter());
   // 能进行请求参数验证、请求接口地址有效性验证
   app.useGlobalPipes(new ValidationPipe());
+  // 添加路由前缀
+  app.setGlobalPrefix('/api/v1');
+  // 全局注册拦截器
+  app.useGlobalInterceptors(new ResponseInterceptor());
 
   // 设置swagger文档
   const options = new DocumentBuilder()
