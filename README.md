@@ -23,6 +23,49 @@ pnpm的使用参见：https://pnpm.io/zh/pnpm-cli。
 
 然后找到你所要调试的文件进行断点，注意应该是dist目录下的文件，而不是src目录下的文件。如果你选src目录下的文件进行断点，会发现根本不起作用。
 
+### VSCode中调试
+
+cmd+shift+p 然后输入Configure Task，然后选择该项(Tasks: Configure Task)，即会自动生成.vscode/task.json文件。
+
+```json
+{
+	"version": "2.0.0",
+	"tasks": [
+    {
+      "type": "npm",
+      "script": "start:debug",
+      "group": "rebuild",
+      "problemMatcher": [],
+      "label": "npm: start:debug",
+      "detail": "nest start --debug --watch"
+    }
+  ]
+}
+```
+
+然后添加.vscode/launch.json文件。
+
+```json
+{
+  // 使用 IntelliSense 了解相关属性。
+  // 悬停以查看现有属性的描述。
+  // 欲了解更多信息，请访问: https://go.microsoft.com/fwlink/?linkid=830387
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "pwa-node",
+      "request": "launch",
+      "name": "Launch Program",
+      "skipFiles": [
+        "<node_internals>/**"
+      ],
+      "program": "${file}"
+    }
+  ]
+}
+```
+然后就可以在VSCode中断点调试了。注意需要在main.ts上有断点先直接断住才行，否则一运行马上就结束了。
+
 ### 初步理解初始化得到的项目
 
 初始化得到的应用程序的入口是src/main.ts，它里面主要做的事情就是使用NestFactory.create(AppModule)来创建了一个Nest应用实例，这个实例监听了3000端口。
