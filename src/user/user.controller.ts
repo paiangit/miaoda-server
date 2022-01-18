@@ -8,6 +8,7 @@ import {
   Param,
   Query,
 } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import {
   CreateUserDto,
@@ -16,25 +17,26 @@ import {
   PaginationResultDto,
 } from './dto';
 
+@ApiTags('用户模块')
 @Controller('user')
 export class UserController {
   constructor(
     private readonly userService: UserService
   ){}
 
-  // 创建用户
+  @ApiOperation({ summary: '创建用户' })
   @Post('create')
   create(@Body() createUserDto: CreateUserDto) {
     return this.userService.create(createUserDto);
   }
 
-  // 删除用户
+  @ApiOperation({ summary: '删除用户' })
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.userService.remove(id);
   }
 
-  // 查询用户列表
+  @ApiOperation({ summary: '分页查询用户列表' })
   @Get('list')
   list(
     @Query() PaginationRequestDto: PaginationRequestDto,
@@ -47,13 +49,13 @@ export class UserController {
     });
   }
 
-  // 按id查询用户信息
+  @ApiOperation({ summary: '按id查询用户信息' })
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.userService.findOne(id);
   }
 
-  // 更新用户的信息
+  @ApiOperation({ summary: '更新用户的信息' })
   @Put(':id')
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     return this.userService.update(id, updateUserDto);
