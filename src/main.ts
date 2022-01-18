@@ -1,10 +1,12 @@
 import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('/api/v1/');
+  // 能进行请求参数验证、请求接口地址有效性验证
+  app.useGlobalPipes(new ValidationPipe());
 
   // 设置swagger文档
   const options = new DocumentBuilder()
