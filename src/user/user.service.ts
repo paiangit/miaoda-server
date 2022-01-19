@@ -75,7 +75,7 @@ export class UserService {
     const totalCount = await this.usersRepository.count();
     const users = await this.usersRepository.createQueryBuilder('user') // 参数'user'是别名
       .where('user.status != :status', { status: -1 }) // 选择状态不等于-1（被删除）的元素，这里的user用的就是上一行中定义的别名
-      .orderBy('created_at', 'DESC') // 降序排列
+      .orderBy('created_at', 'DESC') // 降序排列，注意这里传入的数据库字段中的名字，所以是created_at而不是createdAt
       .skip(PaginationRequestDto.offset) // 跳过多少前面页的数据
       .take(PaginationRequestDto.pageSize) // 最多获取pageSize条数据
       .getMany();
@@ -83,7 +83,7 @@ export class UserService {
     return {
       data: users,
       totalCount,
-      offset: PaginationRequestDto.offset,
+      offset: PaginationRequestDto.offset + PaginationRequestDto.pageSize,
       pageSize: PaginationRequestDto.pageSize,
     };
   }

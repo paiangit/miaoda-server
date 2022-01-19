@@ -415,13 +415,14 @@ export class User extends DateEntity {
   id: number;
 
   @Column({
+    name: 'work_id',
     comment: '工号',
     type: 'char',
     length: 7,
     nullable: true,
     unique: true,
   })
-  work_id: string;
+  workId: string;
 
   @Column({
     comment: '用户名',
@@ -500,22 +501,40 @@ import {
 @Entity()
 export class DateEntity {
   @CreateDateColumn({
+    name: 'created_at',
     type: 'timestamp',
     // CURRENT_TIMESTAMP(precision)返回包含当前的时区信息的 TIMESTAMP WITH TIME ZONE 数据类型。
     // permission是精度，可取值0-9。
     default: () => 'CURRENT_TIMESTAMP(6)'
   })
-  created_at: Date;
+  createdAt: Date;
 
   @UpdateDateColumn({
+    name: 'updated_at',
     type: 'timestamp',
     default: () => 'CURRENT_TIMESTAMP(6)',
     onUpdate: 'CURRENT_TIMESTAMP(6)'
   })
-  updated_at: Date;
+  updatedAt: Date;
 }
 ```
+
 这样，这两个值将分别在创建和更新时进行更新成当前时间戳。
+
+注意这里有个驼峰转下划线命名的问题。因为数据库字段名通常是用_连接的命名方式，而JavaScript代码中，通常是用驼峰命名的方式，怎么让两者各得其所呢？就是像下面第二行和第六行那样。
+
+```ts
+  @UpdateDateColumn({
+    name: 'updated_at',
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP(6)',
+    onUpdate: 'CURRENT_TIMESTAMP(6)'
+  })
+  updatedAt: Date;
+```
+
+更多关于Typeorm 字段名驼峰转下划线命名的问题，可参考：
+https://www.jianshu.com/p/c8d3ba63e03c
 
 修改时区的办法如下：
 
@@ -685,9 +704,9 @@ export class UserService {
     const totalCount = await this.usersRepository.count();
     const users = await this.usersRepository.createQueryBuilder('user') // 参数'user'是别名
       .where('user.status != :status', { status: -1 }) // 选择状态不等于-1（被删除）的元素，这里的user用的就是上一行中定义的别名
-      .orderBy('created_at', 'DESC') // 降序排列
-      .skip(PaginationRequestDto.offset)
-      .take(PaginationRequestDto.pageSize)
+      .orderBy('created_at', 'DESC') // 降序排列，注意这里传入的数据库字段中的名字，所以是created_at而不是createdAt
+      .skip(PaginationRequestDto.offset) // 跳过多少前面页的数据
+      .take(PaginationRequestDto.pageSize) // 最多获取pageSize条数据
       .getMany();
 
     return {
@@ -1353,8 +1372,7 @@ https://www.howtographql.com/basics/0-introduction/
 Nest框架中国开发者社区：
 https://github.com/nest-cn-community
 
-Typeorm 字段名驼峰转下划线命名
-https://www.jianshu.com/p/c8d3ba63e03c
+
 
 Nest.js系列文章之入门篇
 http://www.inode.club/node/nestjs_start.html
