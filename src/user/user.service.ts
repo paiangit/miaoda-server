@@ -80,17 +80,9 @@ export class UserService {
   }
 
   // 查找所有用户
-  public async list(@Query() PaginationRequestDto: PaginationRequestDto): Promise<PaginationResultDto> {
+  public async list(paginationRequestDto: PaginationRequestDto): Promise<PaginationResultDto> {
     const totalCount = await this.usersRepository.count();
-    let offset;
-    let pageSize;
-
-    try {
-      offset = parseInt(PaginationRequestDto.offset, 10);
-      pageSize = parseInt(PaginationRequestDto.pageSize, 10);
-    } catch(err) {
-      throw new HttpException('请求参数错误', 401);
-    }
+    const { pageSize, offset } = paginationRequestDto;
 
     const users = await this.usersRepository.createQueryBuilder('user') // 参数'user'是别名
       .where('user.status != :status', { status: -1 }) // 选择状态不等于-1（被删除）的元素，这里的user用的就是上一行中定义的别名

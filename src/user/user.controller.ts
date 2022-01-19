@@ -44,13 +44,26 @@ export class UserController {
   @ApiOperation({ summary: '分页查询用户列表' })
   @Get('list')
   list(
-    @Query() PaginationRequestDto: PaginationRequestDto,
+    @Query() paginationRequestDto: PaginationRequestDto,
   ): Promise<PaginationResultDto> {
     const PAGE_SIZE_LIMIT = 50;
+    let pageSize;
+    let offset;
+
+    try {
+      pageSize = parseInt(`${paginationRequestDto.pageSize}`, 10);
+      offset = parseInt(`${paginationRequestDto.offset}`, 10);
+    } catch(err) {
+      throw new HttpException('请求参数格式错误', 401);
+    }
+
+    if (Number.isNaN(pageSize) || Number.isNaN(offset)) {
+      throw new HttpException('请求参数格式错误', 401);
+    }
 
     return this.userService.list({
-      ...PaginationRequestDto,
-      pageSize: Math.min(PAGE_SIZE_LIMIT, PaginationRequestDto.pageSize),
+      offset,
+      pageSize: Math.min(PAGE_SIZE_LIMIT, pageSize),
     });
   }
 

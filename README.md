@@ -635,7 +635,7 @@ export class AppModule {}
 
 在上面的user/user.controller.ts中，涉及到两个查询路由的处理，一个是按id查询用户信息，一个是分页查询用户列表。
 
-```
+```ts
 @Controller('user')
 export class UserController {
   constructor(
@@ -645,20 +645,38 @@ export class UserController {
   // 分页查询用户列表
   @Get('list')
   list(
-    @Query() PaginationRequestDto: PaginationRequestDto,
+    @Query() paginationRequestDto: PaginationRequestDto,
   ): Promise<PaginationResultDto> {
     const PAGE_SIZE_LIMIT = 50;
+    let pageSize;
+    let offset;
+
+    try {
+      pageSize = parseInt(`${paginationRequestDto.pageSize}`, 10);
+      offset = parseInt(`${paginationRequestDto.offset}`, 10);
+    } catch(err) {
+      throw new HttpException('请求参数格式错误', 401);
+    }
+
+    if (Number.isNaN(pageSize) || Number.isNaN(offset)) {
+      throw new HttpException('请求参数格式错误', 401);
+    }
 
     return this.userService.list({
-      ...PaginationRequestDto,
-      pageSize: Math.min(PAGE_SIZE_LIMIT, PaginationRequestDto.pageSize),
+      offset,
+      pageSize: Math.min(PAGE_SIZE_LIMIT, pageSize),
     });
   }
 
   // 按id查询用户信息
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    const user = await this.userService.findOne(id);
+    if (user) {
+      return user;
+    } else {
+      throw new HttpException('没有符合条件的用户', 401);
+    }
   }
 }
 ```
@@ -683,6 +701,7 @@ export class UsersModule {}
 ```
 
 这样，我们就可以使用 @InjectRepository() 装饰器将 UsersRepository 注入到 UsersService 中。
+
 在user/user.service.ts中对应的实现是：
 
 ```ts
@@ -701,40 +720,41 @@ import { UserStatus } from './type';
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(User)
-    private usersRepository: Repository<User>
-  ) {}
-  // 按id查询用户
-  public findOne(id: string) {
-    return this.usersRepository.findOne({ id: +id });
-  }
-
-  // 查找所有用户
-  public async list(@Query() PaginationRequestDto: PaginationRequestDto): Promise<PaginationResultDto> {
-    const totalCount = await this.usersRepository.count();
-    let offset;
+    private readonly userService: UserService
+  ){}
+  @Get('list')
+  list(
+    @Query() paginationRequestDto: PaginationRequestDto,
+  ): Promise<PaginationResultDto> {
+    const PAGE_SIZE_LIMIT = 50;
     let pageSize;
+    let offset;
 
     try {
-      offset = parseInt(PaginationRequestDto.offset, 10);
-      pageSize = parseInt(PaginationRequestDto.pageSize, 10);
+      pageSize = parseInt(`${paginationRequestDto.pageSize}`, 10);
+      offset = parseInt(`${paginationRequestDto.offset}`, 10);
     } catch(err) {
-      throw new HttpException('请求参数错误', 401);
+      throw new HttpException('请求参数格式错误', 401);
     }
 
-    const users = await this.usersRepository.createQueryBuilder('user') // 参数'user'是别名
-      .where('user.status != :status', { status: -1 }) // 选择状态不等于-1（被删除）的元素，这里的user用的就是上一行中定义的别名
-      .orderBy('created_at', 'DESC') // 降序排列，注意这里传入的数据库字段中的名字，所以是created_at而不是createdAt
-      .skip(offset) // 跳过多少前面页的数据
-      .take(pageSize) // 最多获取pageSize条数据
-      .getMany();
+    if (Number.isNaN(pageSize) || Number.isNaN(offset)) {
+      throw new HttpException('请求参数格式错误', 401);
+    }
 
-    return {
-      data: users,
-      totalCount,
-      offset: offset + users.length,
-      pageSize,
-    };
+    return this.userService.list({
+      offset,
+      pageSize: Math.min(PAGE_SIZE_LIMIT, pageSize),
+    });
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    const user = await this.userService.findOne(id);
+    if (user) {
+      return user;
+    } else {
+      throw new HttpException('没有符合条件的用户', 401);
+    }
   }
 }
 ```

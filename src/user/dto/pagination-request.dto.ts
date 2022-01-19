@@ -11,12 +11,12 @@ export class PaginationRequestDto {
   @IsInt()
   @Type(() => Number)
   @IsNotEmpty({ message: '每页数据条数不能为空' })
-  pageSize; // 每页数据条数
+  pageSize: number; // 每页数据条数
 
   @ApiProperty({ description: '跳过多少条数据' })
   @Min(0)
   @IsInt()
   @Type(() => Number)
   @IsNotEmpty({ message: '跳过的数据条数不能为空' })
-  offset;
+  offset: number;
 }
