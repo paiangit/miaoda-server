@@ -73,18 +73,28 @@ export class UserService {
   // 查找所有用户
   public async list(@Query() PaginationRequestDto: PaginationRequestDto): Promise<PaginationResultDto> {
     const totalCount = await this.usersRepository.count();
+    let offset;
+    let pageSize;
+
+    try {
+      offset = parseInt(PaginationRequestDto.offset, 10);
+      pageSize = parseInt(PaginationRequestDto.pageSize, 10);
+    } catch(err) {
+      throw new HttpException('请求参数错误', 401);
+    }
+
     const users = await this.usersRepository.createQueryBuilder('user') // 参数'user'是别名
       .where('user.status != :status', { status: -1 }) // 选择状态不等于-1（被删除）的元素，这里的user用的就是上一行中定义的别名
       .orderBy('created_at', 'DESC') // 降序排列，注意这里传入的数据库字段中的名字，所以是created_at而不是createdAt
-      .skip(PaginationRequestDto.offset) // 跳过多少前面页的数据
-      .take(PaginationRequestDto.pageSize) // 最多获取pageSize条数据
+      .skip(offset) // 跳过多少前面页的数据
+      .take(pageSize) // 最多获取pageSize条数据
       .getMany();
 
     return {
       data: users,
       totalCount,
-      offset: PaginationRequestDto.offset + PaginationRequestDto.pageSize,
-      pageSize: PaginationRequestDto.pageSize,
+      offset: offset + users.length,
+      pageSize,
     };
   }
 }
