@@ -43,7 +43,12 @@ export class UserService {
 
     user.status = UserStatus.REMOVED;
 
-    return this.update(id, user);
+    try {
+      await this.update(id, user);
+      return {};
+    } catch(err) {
+      throw new HttpException(`删除失败`, 401);
+    }
   }
 
   // 更新用户

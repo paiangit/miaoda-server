@@ -56,8 +56,13 @@ export class UserController {
 
   @ApiOperation({ summary: '按id查询用户信息' })
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(id);
+  async findOne(@Param('id') id: string) {
+    const user = await this.userService.findOne(id);
+    if (user) {
+      return user;
+    } else {
+      throw new HttpException('没有符合条件的用户', 401);
+    }
   }
 
   @ApiOperation({ summary: '更新用户的信息' })

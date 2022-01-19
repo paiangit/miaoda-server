@@ -3,18 +3,16 @@ import {
   PrimaryGeneratedColumn,
   Column,
   BeforeInsert,
-  BeforeUpdate,
 } from 'typeorm';
 import { Exclude } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { DateEntity } from '../../common/date.entity';
+import { DateEntity } from '../../common/entity';
+import { encrypt } from '../../common/utils';
 
 import {
   UserStatus,
   Gender,
 } from '../type';
-
-const bcrypt = require('bcryptjs');
 
 @Entity()
 export class User extends DateEntity {
@@ -50,7 +48,11 @@ export class User extends DateEntity {
   // select 控制隐藏列
   // 如果要查询的模型具有"select：false"的列，则需要使用addSelect函数来从列中检索信息。
   // .addSelect("user.password")
+  // 采用select的方式虽然查询时能隐藏，但.save()返回的结果没有隐藏
+  // 若采用此种方式，为免密码暴露，返回的时候需要重新过滤一下，比较容易忘记
+  // 所以推荐使用Exclude
   @ApiProperty({ description: '密码' })
+  @Exclude()
   @Column({
     comment: '密码',
     // select: false,
@@ -106,10 +108,7 @@ export class User extends DateEntity {
   status: UserStatus;
 
   @BeforeInsert()
-  @BeforeUpdate()
   async encryptPassword() {
-    // https://www.npmjs.com/package/bcryptjs
-    this.password = await bcrypt.hash(this.password, 10);
-    console.log('密码加密完成');
+    this.password = await encrypt(this.password);
   }
 }
