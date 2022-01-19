@@ -26,7 +26,11 @@ export class UserService {
       throw new HttpException(`username为${username}的用户已经存在`, 401);
     }
 
-    return this.usersRepository.save(createUserDto);
+    // 注意：这里有个大坑——你必须先把它实例化成一个User的实例，然后再去保存，
+    // 否则，是无法在创建用户的时候触发user.entity中的@BeforeInsert()装饰器的
+    // 也就无法完成密码的加密
+    const entity = Object.assign(new User(), createUserDto);
+    return this.usersRepository.save(entity);
   }
 
   // 删除用户

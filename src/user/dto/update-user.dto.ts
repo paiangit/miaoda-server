@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsInt, IsString } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { UserStatus } from '../type';
 
 export class UpdateUserDto {
@@ -20,4 +20,7 @@ export class UpdateUserDto {
   @Type(() => Number)
   @IsNotEmpty({ message: '用户状态不能为空' })
   status: UserStatus;
+
+  @ApiPropertyOptional({ description: '用户密码' })
+  password: string;
 }

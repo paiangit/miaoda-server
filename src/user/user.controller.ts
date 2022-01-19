@@ -7,6 +7,9 @@ import {
   Body,
   Param,
   Query,
+  UseInterceptors,
+  ClassSerializerInterceptor,
+  HttpException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { UserService } from './user.service';
@@ -16,8 +19,10 @@ import {
   PaginationRequestDto,
   PaginationResultDto,
 } from './dto';
+import { encrypt } from '../common/utils';
 
 @ApiTags('用户模块')
+@UseInterceptors(ClassSerializerInterceptor)
 @Controller('user')
 export class UserController {
   constructor(
@@ -57,7 +62,10 @@ export class UserController {
 
   @ApiOperation({ summary: '更新用户的信息' })
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    if ((updateUserDto as any).password) {
+      updateUserDto.password = await encrypt(updateUserDto.password)
+    }
     return this.userService.update(id, updateUserDto);
   }
 }

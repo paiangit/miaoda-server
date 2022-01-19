@@ -15,6 +15,7 @@ specifiers:
   '@types/supertest': ^2.0.11
   '@typescript-eslint/eslint-plugin': ^5.0.0
   '@typescript-eslint/parser': ^5.0.0
+  bcryptjs: ^2.4.3
   class-transformer: ^0.5.1
   class-validator: ^0.13.2
   eslint: ^8.0.1
@@ -44,6 +45,7 @@ dependencies:
   '@nestjs/platform-express': registry.npmmirror.com/@nestjs/platform-express/8.2.5_dd9ef2e1e23f087665d46fe53bbbed58
   '@nestjs/swagger': registry.npmmirror.com/@nestjs/swagger/5.1.5_53f26b9e3dfc6f35a6f9eba4606ad5ff
   '@nestjs/typeorm': registry.npmmirror.com/@nestjs/typeorm/8.0.2_fa8dda60a9697e2f31bd24497506afa8
+  bcryptjs: registry.npmmirror.com/bcryptjs/2.4.3
   class-transformer: registry.npmmirror.com/class-transformer/0.5.1
   class-validator: registry.npmmirror.com/class-validator/0.13.2
   express: registry.npmmirror.com/express/4.17.1
@@ -4050,6 +4052,12 @@ packages:
       babel-plugin-jest-hoist: registry.npmmirror.com/babel-plugin-jest-hoist/27.4.0
       babel-preset-current-node-syntax: registry.nlark.com/babel-preset-current-node-syntax/1.0.1_@babel+core@7.16.7
     dev: true
+
+  registry.npmmirror.com/bcryptjs/2.4.3:
+    resolution: {integrity: sha1-mrVie5PmBiH/fNrF2pczAn3x0Ms=, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/bcryptjs/download/bcryptjs-2.4.3.tgz}
+    name: bcryptjs
+    version: 2.4.3
+    dev: false
 
   registry.npmmirror.com/body-parser/1.19.0:
     resolution: {integrity: sha512-dhEPs72UPbDnAQJ9ZKMNTP6ptJaionhP5cBb541nXPlW60Jepo9RV/a4fX4XWW9CuFNK22krhrj1+rgzifNCsw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/body-parser/download/body-parser-1.19.0.tgz}

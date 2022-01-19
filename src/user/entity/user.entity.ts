@@ -2,7 +2,10 @@ import {
   Entity,
   PrimaryGeneratedColumn,
   Column,
+  BeforeInsert,
+  BeforeUpdate,
 } from 'typeorm';
+import { Exclude } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { DateEntity } from '../../common/date.entity';
 
@@ -10,6 +13,8 @@ import {
   UserStatus,
   Gender,
 } from '../type';
+
+const bcrypt = require('bcryptjs');
 
 @Entity()
 export class User extends DateEntity {
@@ -48,9 +53,9 @@ export class User extends DateEntity {
   @ApiProperty({ description: '密码' })
   @Column({
     comment: '密码',
-    select: false,
-    type: 'varchar',
-    length: 14,
+    // select: false,
+    type: 'char',
+    length: 60,
     nullable: false,
   })
   password: string;
@@ -99,4 +104,12 @@ export class User extends DateEntity {
     default: 1,
   })
   status: UserStatus;
+
+  @BeforeInsert()
+  @BeforeUpdate()
+  async encryptPassword() {
+    // https://www.npmjs.com/package/bcryptjs
+    this.password = await bcrypt.hash(this.password, 10);
+    console.log('密码加密完成');
+  }
 }

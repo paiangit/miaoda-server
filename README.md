@@ -224,6 +224,14 @@ nest g [文件类型] [文件名] [文件目录]
 
 可以通过nest generate --help来查看帮助。
 
+前面我们创建文件都是一个个创建的，其实还有一个快速创建Contoller、Service、Module以及DTO文件的方式:
+
+```sh
+nest g resource <模块名>
+```
+
+这样就快速的创建了一个REST API的模块，里面简单的CRUD代码都已经实现好了。
+
 ### 注册到根模块：把UserModule注册到app.module.ts的imports中：
 
 ```ts
@@ -399,7 +407,7 @@ import {
   PrimaryGeneratedColumn,
   Column,
 } from 'typeorm';
-import { DateEntity } from '../../common/date.entity';
+import { DateEntity } from '../../common/entity';
 
 import {
   UserStatus,
@@ -487,9 +495,11 @@ export class User extends DateEntity {
 }
 ```
 
+关于其中的PrimaryGeneratedColumn，可参见《typeorm装饰器之PrimaryGeneratedColumn》一文：https://blog.csdn.net/qq_27868061/article/details/79018786。
+
 因为created_at和updated_at两个字段很多entity都要用到，所以单独抽成一个基类：
 
-common/date.entity.ts
+common/entity/date.entity.ts
 
 ```ts
 import {
@@ -878,7 +888,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
 在控制器的某个方法中使用上述定义的异常过滤器：@UseFilters(HttpExceptionFilter)，如下：
 
-common/http-exception.filter.ts
+common/filter/http-exception.filter.ts
 
 ```ts
 @Post()
@@ -901,7 +911,7 @@ async create(@Body() createUserDto: CreateUserDto) {
   import { NestFactory } from '@nestjs/core';
   import { ValidationPipe } from '@nestjs/common';
   import { AppModule } from './app.module';
-+ import { HttpExceptionFilter } from './common/http-exception.filter';
++ import { HttpExceptionFilter } from './common/filter';
 
   async function bootstrap() {
     const app = await NestFactory.create(AppModule);
@@ -982,7 +992,7 @@ export class TransformInterceptor implements NestInterceptor {
   import { NestFactory } from '@nestjs/core';
   import { ValidationPipe } from '@nestjs/common';
   import { AppModule } from './app.module';
-  import { HttpExceptionFilter } from './common/http-exception.filter';
+  import { HttpExceptionFilter } from './common/filter';
 + import { ResponseInterceptor } from './common/response.interceptor';
 
   async function bootstrap() {
@@ -1165,7 +1175,7 @@ pnpm add @nestjs/swagger swagger-ui-express -S
   import { ValidationPipe } from '@nestjs/common';
 + import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
   import { AppModule } from './app.module';
-  import { HttpExceptionFilter } from './common/http-exception.filter';
+  import { HttpExceptionFilter } from './common/filter';
   import { ResponseInterceptor } from './common/response.interceptor';
 
   async function bootstrap() {
@@ -1295,6 +1305,207 @@ export interface SwaggerCustomOptions {
 }
 ```
 
+## 用户密码加密
+
+码不能以明文形式保存到数据库中，否则数据泄露密码就会被知道。所以注册功能我们需要用到加密。
+
+MD5加密的缺点：
+
+MD5加密理论上是不能破解的，因为MD5采用的是不可逆算法。
+
+然后，有的网站上提供MD5解密，是因为有大量的存储空间来保存源码和加密后的密码，当解密时就是一个查询的过程，稍微复杂点的查询就无法完成。这种解密方式，叫做 字典攻击（也叫撞库），因为对于相同的输入，MD5加密得到的密码是固定的。
+
+bcryptjs加密：
+
+解决字典攻击的方式 是加盐。bcryptjs 是一个比较好的Node.js加盐（salt）加密的包。所谓加盐，就是系统生成一串随机值，然后混入原始密码中。当加的盐不一样的时候，对于相同的原始密码，得到的加密后的密码也不一样。从而可以解决字典攻击的问题。
+
+先安装依赖：
+
+```sh
+pnpm add bcryptjs -S
+```
+
+```js
+// 生成盐，参数是轮数
+const salt = bcrypt.genSaltSync(10);
+```
+
+再来看看这个库的加密和校验方法的使用：
+
+```js
+// 加密。
+// 第一个参数是待加密的数据
+// 第二个参数是用于哈希密码的盐。如果指定为数字，则将使用指定的轮数生成盐并将其使用。推荐 10
+const encryptedPassword = await bcryptjs.hash(data, salt);
+```
+
+```js
+// 校验
+// 第一个参数是要比较的数据, 是用户登录时输入的密码
+// 第二个参数是要比较的数据，是从数据库中查询出来的加密过的密码
+const isMatched = bcryptjs.compareSync(password, encryptedPassword);
+```
+
+如果相同，则会返回结果为true。表示密码验证通过。
+
+为了便于多模块使用，比如，创建用户的时候和更新用户信息的时候，涉及到密码的部分都得加密。我们将加密模块单独抽成一个util工具库：
+
+common/utils/encrypt.ts
+
+```ts
+// https://www.npmjs.com/package/bcryptjs
+import * as bcrypt from 'bcryptjs';
+
+// 生成salt（盐）
+export function genSalt() {
+  return bcrypt.genSaltSync(10);
+}
+
+export async function encrypt(data: string, salt = genSalt()) {
+  const result = await bcrypt.hash(data, salt);
+  console.log('加密完成');
+  return result;
+}
+```
+
+然后，在user/entity/user.entity.ts中引入它进行使用：
+
+```ts
+import {
+  Entity,
+  PrimaryGeneratedColumn,
+  Column,
+  BeforeInsert,
+} from 'typeorm';
+import { Exclude } from 'class-transformer';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { DateEntity } from '../../common/entity';
++ import { encrypt } from '../../common/utils';
+
+import {
+  UserStatus,
+  Gender,
+} from '../type';
+
+@Entity()
+export class User extends DateEntity {
+  @ApiProperty({ description: '用户编号' })
+  @PrimaryGeneratedColumn({
+    comment: '用户编号',
+    type: 'int',
+    unsigned: true
+  })
+  id: number;
+
+  @ApiPropertyOptional({ description: '工号' })
+  @Column({
+    name: 'work_id',
+    comment: '工号',
+    type: 'char',
+    length: 7,
+    nullable: true,
+    unique: true,
+  })
+  workId: string;
+
+  @ApiProperty({ description: '用户名' })
+  @Column({
+    comment: '用户名',
+    type: 'varchar',
+    length: 14,
+    nullable: false,
+    unique: true,
+  })
+  username: string;
+
+  // select 控制隐藏列
+  // 如果要查询的模型具有"select：false"的列，则需要使用addSelect函数来从列中检索信息。
+  // .addSelect("user.password")
+  // 采用select的方式虽然查询时能隐藏，但.save()返回的结果没有隐藏
+  // 若采用此种方式，为免密码暴露，返回的时候需要重新过滤一下，比较容易忘记
+  // 所以推荐使用Exclude
+  @ApiProperty({ description: '密码' })
++ @Exclude()
+  @Column({
+    comment: '密码',
+-   // select: false,
++   type: 'char',
++   length: 60,
+    nullable: false,
+  })
+  password: string;
+
+  @ApiPropertyOptional({ description: '手机号码' })
+  @Column({
+    comment: '手机号码',
+    type: 'char',
+    length: 11,
+    nullable: true,
+  })
+  phone: string;
+
+  @ApiPropertyOptional({ description: '邮箱' })
+  @Column({
+    comment: '邮箱',
+    type: 'varchar',
+    length: 36,
+    nullable: true,
+  })
+  email: string;
+
+  @ApiPropertyOptional({ description: '性别' })
+  @Column({
+    comment: '性别',
+    type: 'tinyint',
+    nullable: true,
+    default: 0,
+  })
+  gender: Gender;
+
+  @ApiPropertyOptional({ description: '头像' })
+  @Column({
+    comment: '头像',
+    type: 'char',
+    length: 200,
+    nullable: true,
+  })
+  avatar: string;
+
+  @ApiProperty({ description: '用户状态' })
+  @Column({
+    comment: '用户状态',
+    type: 'tinyint',
+    nullable: false,
+    default: 1,
+  })
+  status: UserStatus;
+
++ @BeforeInsert()
++ async encryptPassword() {
++   this.password = await encrypt(this.password);
++ }
+}
+```
+
+然后在其中，我们做了如下修改：
+
+第一是使用@BeforeInsert()装饰器，因为数据在.save()到数据库的时候会触发BeforeInsert装饰的函数，从后确保新建用户的时候，能对密码进行加密。
+
+第二是，因为加密后密码的长度是固定的，所以数据类型就不能再用varchar了，因此我们把类型改成char，并且给出固定的长度。
+
+第三是使用了@Exclude()装饰器，来隐藏password字段，使得查询的时候不返回。采用给@Column()装饰器传入{select: false}选项是一种方式，但是这是不彻底的。因为当你调用.save()方法返回的结果中，仍然会发现密码字段没有隐藏（调用.find()的时候是隐藏的），这个时候，你必须手动对它进行处理然后才能再返回，但是这很容易遗忘而导致密码泄露。不过，使用@Exclude()装饰器得配合对Controller应用@UseInterceptors(ClassSerializerInterceptor)装饰器：
+
+```ts
+  @ApiTags('用户模块')
++ @UseInterceptors(ClassSerializerInterceptor)
+  @Controller('user')
+  export class UserController {
+```
+
+UseInterceptors 和 ClassSerializerInterceptor 都是从 @nestjs/common 模块中引入的。
+
+此外，我们不仅需要处理新建时的用户密码的加密，还得处理更新用户时的密码加密。具体自己看下代码。
+
 ## 日志
 
 winston：
@@ -1366,6 +1577,11 @@ https://docs.nestjs.cn/8
 TypeORM中文文档：
 https://typeorm.biunav.com/zh/
 
+https://orkhan.gitbook.io/typeorm/docs/zh_cn-8/decorator-reference
+
+TypeORM培训教程（质量不错）
+https://www.tutorialspoint.com/typeorm/typeorm_entity.htm
+
 使用NestJS搭建服务端应用
 https://juejin.cn/post/7053840108331466783#heading-30
 其中关于NestJS的各个分层的视角比较简明易懂。VO层和接口层值得参考
@@ -1404,3 +1620,5 @@ https://github.com/dzzzzzy/Nestjs-Learning/tree/master/demo/easy-post
 graphql API demo
 https://github.com/dzzzzzy/Nestjs-Learning/tree/master/demo/graphql-api
 
+使用 Redis 实现登录挤出功能
+https://blog.csdn.net/huan1043269994/article/details/107572396

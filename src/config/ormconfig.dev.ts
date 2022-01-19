@@ -5,7 +5,7 @@ export default {
   username: 'root',
   password: '',
   database: 'miaoda',
-  logging: true,
+  logging: false,
   timezone: '+08:00', // 服务器上配置的时区
   // 设置为true将自动加载项目中每一个通过forFeature()注册了的实体，
   // 将它们自动添加到配置对象的entities数组中,
