@@ -4,7 +4,7 @@ import { Catch, ExceptionFilter, HttpException, ArgumentsHost } from '@nestjs/co
 export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: HttpException, host: ArgumentsHost) {
     const ctx = host.switchToHttp(); // 获取请求上下文
-    const request = ctx.getRequest(); // 在请求上下文中获取request对象
+    // const request = ctx.getRequest(); // 在请求上下文中获取request对象
     const response = ctx.getResponse(); // 在请求上下文中获取response对象
     const status = exception.getStatus(); // 获取异常的状态码
 
@@ -15,8 +15,8 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.header('Content-Type', 'application/json; charset=utf-8');
     response.send({
       code: -1,
-      data: {},
       message,
+      data: {},
     });
   }
 }
