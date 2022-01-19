@@ -12,23 +12,25 @@ import {
 } from '../type';
 
 @Entity()
-export class UserEntity extends DateEntity {
+export class User extends DateEntity {
   @ApiProperty({ description: '用户编号' })
   @PrimaryGeneratedColumn({
     comment: '用户编号',
     type: 'int',
+    unsigned: true
   })
   id: number;
 
   @ApiPropertyOptional({ description: '工号' })
   @Column({
+    name: 'work_id',
     comment: '工号',
     type: 'char',
     length: 7,
     nullable: true,
     unique: true,
   })
-  work_id: string;
+  workId: string;
 
   @ApiProperty({ description: '用户名' })
   @Column({

@@ -7,14 +7,14 @@ import {
   PaginationRequestDto,
   PaginationResultDto,
 } from './dto';
-import { UserEntity } from './entity/user.entity';
+import { User } from './entity/user.entity';
 import { UserStatus } from './type';
 
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(UserEntity)
-    private usersRepository: Repository<UserEntity>
+    @InjectRepository(User)
+    private usersRepository: Repository<User>
   ) {}
 
   // 创建用户

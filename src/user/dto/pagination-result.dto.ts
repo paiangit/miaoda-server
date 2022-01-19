@@ -1,11 +1,11 @@
 import { IsNotEmpty } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { UserEntity } from '../entity/user.entity';
+import { User } from '../entity/user.entity';
 
 export class PaginationResultDto {
   @ApiProperty()
   @IsNotEmpty()
-  data: UserEntity[];
+  data: User[];
 
   @ApiProperty()
   @IsNotEmpty()

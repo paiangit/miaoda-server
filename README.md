@@ -662,10 +662,10 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UsersService } from './users.service';
 import { UsersController } from './users.controller';
-import { UserEntity } from './user.entity';
+import { User } from './user.entity';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([UserEntity])],
+  imports: [TypeOrmModule.forFeature([User])],
   providers: [UsersService],
   controllers: [UsersController],
 })
@@ -685,14 +685,14 @@ import {
   PaginationRequestDto,
   PaginationResultDto,
 } from './dto';
-import { UserEntity } from './entity/user.entity';
+import { User } from './entity/user.entity';
 import { UserStatus } from './type';
 
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(UserEntity)
-    private usersRepository: Repository<UserEntity>
+    @InjectRepository(User)
+    private usersRepository: Repository<User>
   ) {}
   // 按id查询用户
   public findOne(id: string) {
@@ -1203,7 +1203,7 @@ pnpm add @nestjs/swagger swagger-ui-express -S
 
 SwaggerModule寻找所有的使用@Body()，@Query()以及@Param()在路由处理器装饰。因此，可以创建有效的文档。该模块利用反射创建相应的模型定义。
 
-但仅仅依靠这些是不够的。比如，目前CreateUserDto、UpdateUserDto、UserEntity的文档内容都是空的。
+但仅仅依靠这些是不够的。比如，目前CreateUserDto、UpdateUserDto、User的文档内容都是空的。
 
 怎么把其中的字段生成到Swagger文档中呢？
 
