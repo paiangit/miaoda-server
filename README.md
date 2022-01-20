@@ -1542,6 +1542,20 @@ https://github.com/log4js-node/log4js-node
 https://juejin.cn/post/6891894638618755085
 
 
+## 允许跨域
+
+```ts
+const app = await NestFactory.create(AppModule);
+app.enableCors({
+  origin: 'http://localhost', // 允许哪个域名跨域访问
+  methods: [ // 允许跨域访问哪些方法
+    'GET',
+    'POST',
+    'PUT',
+    'DELETE',
+  ],
+});
+```
 
 ## Installation
 

@@ -15,6 +15,16 @@ async function bootstrap() {
   app.setGlobalPrefix('/api/v1');
   // 全局注册拦截器
   app.useGlobalInterceptors(new ResponseInterceptor());
+  // 允许跨域
+  app.enableCors({
+    origin: 'http://localhost',
+    methods: [
+      'GET',
+      'POST',
+      'PUT',
+      'DELETE',
+    ],
+  });
 
   // 设置swagger文档
   const options = new DocumentBuilder()
