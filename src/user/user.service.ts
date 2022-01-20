@@ -1,4 +1,4 @@
-import { HttpException, Injectable, Query } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import {
@@ -35,7 +35,7 @@ export class UserService {
 
   // 删除用户
   public async remove(id: string) {
-    const user = await this.findOne(id);
+    const user = await this.findOneById(id);
 
     if (!user) {
       throw new HttpException(`id为${id}的用户不存在`, 401);
@@ -75,8 +75,25 @@ export class UserService {
   }
 
   // 按id查询用户
-  public findOne(id: string) {
+  public findOneById(id: string) {
     return this.usersRepository.findOne({ id: +id });
+  }
+
+  // 按用户名称查询
+  // 第二个参数是返回的数据中是否需要包含密码，默认不包含，如果开启该选项，需要慎重评估
+  // 除非是登录功能，其它情况一般返回的数据中都不应该包含密码
+  public async findOneByUsername(username: string, containPassword: boolean = false) {
+    if (!containPassword) {
+      return await this.usersRepository.findOne({ username });
+    }
+
+    const user = await this.usersRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password') // 通过addSelect添加password查询，否则查询结果中默认没有密码
+      .where('user.username=:username', { username })
+      .getOne();
+
+    return user;
   }
 
   // 查找所有用户

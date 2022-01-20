@@ -69,8 +69,8 @@ export class UserController {
 
   @ApiOperation({ summary: '按id查询用户信息' })
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const user = await this.userService.findOne(id);
+  async findOneById(@Param('id') id: string) {
+    const user = await this.userService.findOneById(id);
     if (user) {
       return user;
     } else {
@@ -80,9 +80,9 @@ export class UserController {
 
   @ApiOperation({ summary: '更新用户的信息' })
   @Put(':id')
-  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     if ((updateUserDto as any).password) {
-      updateUserDto.password = await encrypt(updateUserDto.password)
+      updateUserDto.password = encrypt(updateUserDto.password)
     }
     return this.userService.update(id, updateUserDto);
   }

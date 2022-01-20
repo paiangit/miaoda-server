@@ -109,6 +109,6 @@ export class User extends DateEntity {
 
   @BeforeInsert()
   async encryptPassword() {
-    this.password = await encrypt(this.password);
+    this.password = encrypt(this.password);
   }
 }

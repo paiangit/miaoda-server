@@ -156,8 +156,8 @@ export class UserController {
 
   // 按id查询用户信息
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.userService.findOne(id);
+  findOneById(@Param('id') id: string) {
+    return this.userService.findOneById(id);
   }
 
   // 更新用户的信息
@@ -186,7 +186,7 @@ export class UserService {
     return `update succeed, id: ${id}, updateUserInfo: ${JSON.stringify(updateUserInfo)}`;
   }
 
-  public findOne(id: string) {
+  public findOneById(id: string) {
     return `a user, id: ${id}`;
   }
 
@@ -670,8 +670,8 @@ export class UserController {
 
   // 按id查询用户信息
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const user = await this.userService.findOne(id);
+  async findOneById(@Param('id') id: string) {
+    const user = await this.userService.findOneById(id);
     if (user) {
       return user;
     } else {
@@ -748,8 +748,8 @@ export class UserService {
   }
 
   @Get(':id')
-  async findOne(@Param('id') id: string) {
-    const user = await this.userService.findOne(id);
+  async findOneById(@Param('id') id: string) {
+    const user = await this.userService.findOneById(id);
     if (user) {
       return user;
     } else {
@@ -1381,8 +1381,8 @@ export function genSalt() {
   return bcrypt.genSaltSync(10);
 }
 
-export async function encrypt(data: string, salt = genSalt()) {
-  const result = await bcrypt.hash(data, salt);
+export function encrypt(data: string, salt = genSalt()) {
+  const result = bcrypt.hashSync(data, salt);
   console.log('加密完成');
   return result;
 }
@@ -1501,8 +1501,8 @@ export class User extends DateEntity {
   status: UserStatus;
 
 + @BeforeInsert()
-+ async encryptPassword() {
-+   this.password = await encrypt(this.password);
++ encryptPassword() {
++   this.password = encrypt(this.password);
 + }
 }
 ```
@@ -1556,6 +1556,293 @@ app.enableCors({
   ],
 });
 ```
+
+## 添加.editorconfig文件
+
+```
+root = true
+
+[*]
+# 编码方式
+charset = utf-8
+# 使用空格来缩进
+indent_style = space
+# 代码缩进尺寸；如果设置成tab，可以设置tab_width
+indent_size = 2
+# 换行符
+end_of_line = lf
+# 每个文件都以空白行来结尾
+insert_final_newline = true
+# 去除空白行行首的空白字符
+trim_trailing_whitespace = true
+```
+
+但是Editor for VS Code这个插件老是会导致错误的自动换行，因此把这个插件禁用掉。
+
+## 实现登录功能
+
+首先介绍有个专门做身份认证的Nodejs中间件：passport，它功能单一，只能做登录验证，但非常强大，支持本地账号验证和第三方账号登录验证（OAuth和OpenID等），支持大多数Web网站和服务。
+
+passport 是目前最流行的 node.js 认证库，为社区所熟知，并相继应用于许多生产应用中。
+
+passport 中最重要的概念是策略，passport 模块本身不能做认证，所有的认证方法都以策略模式封装为插件，需要某种认证时将其添加到package.json即可。
+
+### local本地认证
+
+#### 安装依赖
+
+首先安装一下依赖包，前面说了passport本身不做认证，所以我们至少要安装一个passport策略，这里先实现本地身份验证，所以先安装passport-local:
+
+```sh
+pnpm add @nestjs/passport passport passport-local -S
+pnpm add @types/passport @types/passport-local -D
+```
+
+不管你选择哪种 passport 策略，都需要安装 @nestjs/Passport 和 Passport 包。此外，你需要安装特定策略的包(例如， passport-local 或 passport-jwt，等等)，它实现您正在构建的特定身份验证策略。
+
+@types/passport @types/passport-local 是类型提示，因为passport是纯js的包，不装也不会影响程序运行，只是写TS的过程中没有代码提示。
+
+#### 新建auth/auth.module.ts
+
+先定义一下鉴权模块AuthModule：
+
+```ts
+import { Module } from '@nestjs/common';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { UserModule } from '../user/user.module';
+import { LocalStrategy } from './local.strategy';
+
+@Module({
+  imports: [UserModule],
+  controllers: [AuthController],
+  providers: [AuthService, LocalStrategy],
+  exports: [],
+})
+export class AuthModule {
+}
+```
+
+因为下面我们在这个模块中会要用到UserModule中的UserService，所以我们这里要注册到AuthModule的@Module装饰器的imports选项中。并且，因为UserModule需要将UserService提供给AuthModule这个外部模块使用，所以需要在UserModule的@Module装饰器中通过exports: [UserService]选项中导出这个模块。
+
+此外，为了让AuthService 和 LocalStrategy在整个Auth模块中可用，我们需要将他们都挂到providers中。
+
+#### 新建auth/auth.controller.ts
+
+```ts
+import { AuthGuard } from '@nestjs/passport';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import {
+  Controller,
+  UseGuards,
+  UseInterceptors,
+  Post,
+  Body,
+  Req,
+  ClassSerializerInterceptor,
+} from '@nestjs/common';
+import { SignInDto } from './dto';
+
+@ApiTags('鉴权模块')
+// 重要：为了将隐藏字段过滤掉，避免返回给客户端，造成密码泄露！！！
+// 虽然实际上我们已经在auth/auth.service.ts中显式地对密码字段做了删除，
+// 但为防止以后还有其它的隐藏字段被泄露，这里做个二次兜底
+@UseInterceptors(ClassSerializerInterceptor)
+@Controller('auth')
+export class AuthController {
+  @ApiOperation({ summary: '用户登录' })
+  @UseGuards(AuthGuard('local'))
+  @Post('signIn')
+  async login(@Body() signInDto: SignInDto, @Req() req) {
+    return req.user;
+  }
+}
+```
+其中主要注册了一个路由处理函数，就是处理 /auth/signIn 这个路由的。用户会传入SignInDto格式的登录信息（实际上就是用户名、密码）。这里用到了AuthGuard('local')。
+
+这里用到了守卫，所以我们得先补充一下守卫的相关知识。
+
+#### 守卫
+
+守卫就是一个使用 @Injectable() 装饰器装饰的类。守卫应该实现 CanActivate 接口，此函数应该返回一个布尔值，它根据运行时出现的某些条件（例如权限，角色，访问控制列表等）来确定给定的请求是否可以由路由处理程序处理，返回为false就是拒绝，返回为true就是获得授权。
+
+守卫在每个中间件之后执行，但在任何拦截器或管道之前执行。
+
+一个守卫程序的样子如下：
+
+```ts
+// auth.guard.ts
+import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Observable } from 'rxjs';
+
+@Injectable()
+export class AuthGuard implements CanActivate {
+  canActivate(
+    context: ExecutionContext,
+  ): boolean | Promise<boolean> | Observable<boolean> {
+    const request = context.switchToHttp().getRequest();
+    return validateRequest(request);
+  }
+}
+```
+
+与管道和异常过滤器一样，守卫也是可以在根据需要绑定在控制器范围的、方法范围或全局范围三个不同级别范围起作用的。下面，我们使用 @UseGuards()装饰器设置了一个控制器范围的守卫。这个装饰器可以使用单个参数，也可以使用逗号分隔的参数列表。也就是说，你可以传递多个守卫并用逗号分隔它们。
+
+```ts
+@Controller('cats')
+@UseGuards(RolesGuard)
+export class CatsController {}
+```
+
+如果你想让一个守卫作用到全局范围，可以这样绑定：
+
+```ts
+const app = await NestFactory.create(AppModule);
+app.useGlobalGuards(new RolesGuard());
+```
+
+如果还想注入依赖的话，则可以采用下面这种方式：
+
+```ts
+import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
+
+@Module({
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
+    },
+  ],
+})
+export class AppModule {}
+```
+
+明白了守卫是什么，我们再来看AuthController的代码中的这一小段：
+
+```ts
+@Controller('auth')
+export class AuthController {
+  @ApiOperation({ summary: '用户登录' })
+  @UseGuards(AuthGuard('local'))
+  @Post('signIn')
+  async login(@Body() signInDto: SignInDto, @Req() req) {
+    return req.user;
+  }
+}
+```
+
+其中，@UseGaurds就是用在控制器范围内绑定一个守卫，这个守卫叫AuthGuard，它是@nestjs/passport中的内置的守卫。
+
+而且是使用了本地策略。
+
+本地策略是怎么处理的呢？我们看
+
+#### auth/localstrategy.ts
+
+```ts
+import { PassportStrategy } from '@nestjs/passport';
+import { IStrategyOptions, Strategy } from 'passport-local';
+import { UnauthorizedException, Injectable } from '@nestjs/common';
+import { AuthService } from './auth.service';
+
+@Injectable()
+export class LocalStrategy extends PassportStrategy(Strategy) {
+  constructor(private readonly authService: AuthService) {
+    super(
+      // {
+      //   usernameField: 'username',
+      //   passwordField: 'password',
+      // } as IStrategyOptions
+    );
+  }
+
+  async validate(username: string, password: string): Promise<any> {
+    const user = await this.authService.validateUser(username, password);
+
+    if (!user) {
+      throw new UnauthorizedException('用户名或密码错误！');
+    }
+
+    return user;
+  }
+}
+```
+我们看到，auth/localstrategy.ts就是一个@Injectable()装饰的，扩展自PassportStrategy(Strategy)，而且实现了一个validate方法的类。实际上，passport的策略都是这样的类。在这个validate方法中，调用了AuthService的validateUser方法，查询到username、password所对应的用户，并把这个用户的信息返回。这个用户的信息将被混入到请求的request对象中，所以
+
+```ts
+async login(@Body() signInDto: SignInDto, @Req() req) {
+  return req.user;
+}
+```
+
+中req.user才可以读到这个值。具体是怎么混入进去的，可以再细研究下。
+
+#### 新建auth/auth.service.ts
+
+```ts
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { UserService } from '../user/user.service';
+import { compare } from '../common/utils';
+
+@Injectable()
+export class AuthService {
+  constructor(private readonly userService: UserService) {}
+
+  async validateUser(username: string, plainPassword: string): Promise<any> {
+    const user = await this.userService.findOneByUsername(username, true);
+
+    if (!user) {
+      throw new BadRequestException('用户名不正确！');
+    }
+
+    // 密码比对
+    if (compare(plainPassword, user.password)) {
+      throw new BadRequestException('密码不正确！');
+    }
+
+    // 此处先将password显式删除，然后再返回，避免密码泄露！！！
+    delete user.password;
+
+    return user;
+  }
+}
+```
+
+AuthService是怎么实现的呢？它在构造函数中注入了UserService的实例，然后通过在UserService中添加findOneByUsername方法，从而实现通过用户名从数据库查找对应的用户信息，第二个参数是指定连password信息也返回回来。拿到用户信息后，用bcryptjs的compareSync方法对用户传过来的未加密密码和数据库中的加密密码进行比较，如果能匹配上，则说明密码正确。
+
+这里有个细节就是，加密后的密码就不要返回给客户端了，所以我们特地把它从用户信息中过滤掉，防止密码泄露。
+
+
+#### 添加auth/dto/sign-in.dto.ts
+
+```ts
+import {
+  IsNotEmpty,
+  IsString,
+  MinLength,
+  MaxLength,
+} from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+
+export class SignInDto {
+  @ApiProperty({ description: '用户名' })
+  @MinLength(5, { message: '用户名不能小于5位' })
+  @MaxLength(14, { message: '用户名不能超过14位' })
+  @IsString()
+  @IsNotEmpty()
+  username: string;
+
+  @ApiProperty({ description: '密码' })
+  @MinLength(8, { message: '密码不能小于8位' })
+  @MaxLength(14, { message: '密码不能大于14位' })
+  @IsString()
+  @IsNotEmpty()
+  password: string;
+}
+```
+
+主要留意下上面我们通过message选项传入了校验错误时的错误提示，这样返回给用户体验更好。
 
 ## Installation
 
