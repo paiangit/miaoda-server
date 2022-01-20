@@ -8,7 +8,18 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const response = ctx.getResponse(); // 在请求上下文中获取response对象
     const status = exception.getStatus(); // 获取异常的状态码
 
-    const message = exception.message ?? `${status >= 500 ? 'Server Error' : 'Client Error'}`;
+    let message = `${status >= 500 ? 'Server Error' : 'Client Error'}`;
+
+    const res = exception.getResponse();
+    if (typeof res === 'object' && (res as any).message) {
+      if ((typeof (res as any).message) === 'string') {
+        message = (res as any).message;
+      } else {
+        message = (res as any).message[0];
+      }
+    } else {
+      message = exception.message;
+    }
 
     // 设置返回的状态码、请求头，发送错误信息
     response.status(status);

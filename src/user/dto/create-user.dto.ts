@@ -24,10 +24,8 @@ export class CreateUserDto {
   @IsNotEmpty({ message: '密码不能为空' })
   password: string;
 
-  @ApiProperty({ description: '用户状态' })
-  @IsEnum(UserStatus)
+  @ApiPropertyOptional({ description: '用户状态' })
   @Type(() => Number)
-  @IsNotEmpty({ message: '用户状态不能为空' })
   status: UserStatus;
 
   @ApiPropertyOptional({ description: '手机号码' })
