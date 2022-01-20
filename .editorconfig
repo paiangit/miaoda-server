@@ -1,0 +1,15 @@
+root = true
+
+[*]
+# 编码方式
+charset = utf-8
+# 使用空格来缩进
+indent_style = space
+# 代码缩进尺寸；如果设置成tab，可以设置tab_width
+indent_size = 2
+# 换行符
+end_of_line = lf
+# 每个文件都以空白行来结尾
+insert_final_newline = true
+# 去除空白行行首的空白字符
+trim_trailing_whitespace = true
