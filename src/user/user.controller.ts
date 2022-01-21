@@ -10,7 +10,9 @@ import {
   UseInterceptors,
   ClassSerializerInterceptor,
   HttpException,
+  UseGuards,
 } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import {
@@ -68,6 +70,7 @@ export class UserController {
   }
 
   @ApiOperation({ summary: '按id查询用户信息' })
+  @UseGuards(AuthGuard('jwt'))
   @Get(':id')
   async findOneById(@Param('id') id: string) {
     const user = await this.userService.findOneById(id);
@@ -79,6 +82,7 @@ export class UserController {
   }
 
   @ApiOperation({ summary: '更新用户的信息' })
+  @UseGuards(AuthGuard('jwt'))
   @Put(':id')
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
     if ((updateUserDto as any).password) {

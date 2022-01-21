@@ -1736,7 +1736,7 @@ export class AuthController {
 
 而且是使用了本地策略。
 
-本地策略是怎么处理的呢？我们看
+本地策略是怎么处理的呢？我们看auth/localstrategy.ts。
 
 #### auth/localstrategy.ts
 
@@ -1776,7 +1776,7 @@ async login(@Body() signInDto: SignInDto, @Req() req) {
 }
 ```
 
-中req.user才可以读到这个值。具体是怎么混入进去的，可以再细研究下。
+中req.user才可以读到这个值。req.user是在 passport-local 身份验证流期间由 Passport 填充上的。
 
 #### 新建auth/auth.service.ts
 
@@ -1797,7 +1797,7 @@ export class AuthService {
     }
 
     // 密码比对
-    if (compare(plainPassword, user.password)) {
+    if (!compare(plainPassword, user.password)) {
       throw new BadRequestException('密码不正确！');
     }
 
@@ -1843,6 +1843,314 @@ export class SignInDto {
 ```
 
 主要留意下上面我们通过message选项传入了校验错误时的错误提示，这样返回给用户体验更好。
+
+### JWT
+
+前面我们光是验证了用户身份是正确的，但是一刷新还是得登录，因为没有记录啊。所以，登录成功之后，我们得想办法给客户端一点标记，让后续访问时我们知道它是登录过的。这个标记的方法有很多，比如cookie、session-id、token、jwt等等，详细可参考此文：https://juejin.cn/post/6898630134530752520
+
+下面我们采用JWT这种方式。
+
+安装依赖：
+
+```sh
+pnpm add @nestjs/jwt passport-jwt -S
+pnpm add @types/passport-jwt -D
+```
+
+#### 读取配置文件
+
+```sh
+pnpm add @nestjs/config -S
+```
+参见：https://docs.nestjs.cn/8/techniques?id=%e9%85%8d%e7%bd%ae
+
+auth/auth.module.ts
+
+```ts
+import { Module, DynamicModule } from '@nestjs/common';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigService, ConfigModule } from '@nestjs/config';
+import { resolve } from 'path';
+import { JwtStrategy } from './jwt.strategy';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
+import { UserModule } from '../user/user.module';
+import { LocalStrategy } from './local.strategy';
+
+const jwtModule: DynamicModule = JwtModule.registerAsync({
+  imports: [
+    ConfigModule.forRoot({
+      // TODO: 这里需要根据环境变换环境变量配置文件
+      envFilePath: resolve(__dirname, '../../.env.development'),
+    })
+  ],
+  inject: [ConfigService],
+  useFactory: async(configService: ConfigService) => {
+    // 从环境变量配置文件读取配置信息
+    const secret = configService.get('JWT_SECRET');
+    const expiresIn = configService.get('JWT_EXPIRES_IN');
+
+    return {
+      secret, // 密钥
+      signOptions: {
+        expiresIn, // 过期时间
+      },
+    };
+  },
+});
+
+@Module({
+  imports: [
+    UserModule,
+    ConfigModule,
+    jwtModule,
+  ],
+  controllers: [AuthController],
+  providers: [AuthService, LocalStrategy, ConfigService, JwtStrategy],
+  exports: [],
+})
+export class AuthModule {}
+```
+
+安装完成之后，我们需要导入ConfigModule模块。通常，我们在根模块AppModule中导入它，并使用ConfigModule.forRoot({envFilePath: 'xxx'})静态方法导入它的配置。为了免受命令执行路径的影响，我们这里path模块获得.env文件的绝对路径。
+
+上述代码将从默认位置（项目根目录）载入并解析一个.env文件，从.env文件和process.env合并环境变量键值对，并将结果存储到一个可以通过ConfigService访问的私有结构。forRoot()方法注册了ConfigService提供者，后者提供了一个get()方法来读取这些解析/合并的配置变量。由于@nestjs/config依赖dotenv，它使用该包的规则来处理冲突的环境变量名称。当一个键同时作为环境变量（例如，通过操作系统终端如export DATABASE_USER=test导出）存在于运行环境中以及.env文件中时，以运行环境变量优先。
+
+当您想在其他模块中使用ConfigModule时，需要将其导入（这是任何 Nest 模块的标准配置）。 或者，通过将options对象的isGlobal属性设置为true，将其声明为全局模块，如下所示。 在这种情况下，将ConfigModule加载到根模块（例如AppModule）后，您无需在其他模块中导入它。
+
+接着，我们在项目根目录下创建一个.env.development文件，内容为：
+
+```
+# 开发环境的环境变量
+
+##======JWT相关配置======
+
+# JWT加密用的密钥
+JWT_SECRET=zb_28
+
+# JWT的过期时间
+JWT_EXPIRES_IN=4h
+```
+
+此外，上述模块中还通过JwtModule.registerAsync将JWT的签名密钥、过期时间等进行了注册。
+// TODO JwtModule.registerAsync的原理值得继续搞清楚
+
+另外，上面的代码中，将AuthService, LocalStrategy, ConfigService, JwtStrategy多注册到了providers中。我们依次解释一下：
+
+ConfigService很好理解，它就是用来读取.env文件的，因为本模块的jwt.strategy.ts中还得用它读.env的环境变量，所以这里要注册。
+
+AuthService会被auth.controller.ts用到，因此同样要注册。
+
+前面我们提到过，passport 模块本身不能做认证，所有的认证方法都以策略模式封装为插件。这里的LocalStrategy和JwtStrategy分别对应的 auth/local.strategy.ts 和 auth/jwt.strategy.ts 对应的就是两个策略插件。因为用户登录首先得输入用户名和密码给服务端，这个时候，到了服务端我们就用auth/local.strategy.ts进行校验（我们称为本地策略），本地校验通过后会生成JWT（一个token），把它返回给客户端。客户端收到token后把它存起来，下次访问接口的时候把它从请求头里面按照一定的格式要求带过来，这个时候，服务端再进行验证，就走的是auth/jwt.strategy.ts进行校验（我们称它为JWT策略）。因为这两个文件在本模块中都有用到，所以也得注册到模块的providers中。
+
+#### 本地校验策略：auth/local.strategy.ts
+
+```ts
+import { PassportStrategy } from '@nestjs/passport';
+import { IStrategyOptions, Strategy } from 'passport-local';
+import { UnauthorizedException, Injectable } from '@nestjs/common';
+import { AuthService } from './auth.service';
+
+@Injectable()
+export class LocalStrategy extends PassportStrategy(Strategy) {
+  constructor(private readonly authService: AuthService) {
+    super(
+      {
+        usernameField: 'username',
+        passwordField: 'password',
+      } as IStrategyOptions
+    );
+  }
+
+  async validate(username: string, password: string): Promise<any> {
+    const user = await this.authService.validateUserLocal(username, password);
+
+    if (!user) {
+      throw new UnauthorizedException('用户名或密码错误！');
+    }
+
+    return user;
+  }
+}
+```
+
+按照passport的要求，策略是扩展自 PassportStrategy(Strategy)的一个类，并且用装饰器@Injectable()进行装饰。在策略类里面，要实现validate方法。这里主功能都是通过auth/auth.service.ts的validateUserLocal方法来实现的。
+
+
+#### auth/auth.service.ts
+
+```ts
+import { Injectable, BadRequestException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import { UserService } from '../user/user.service';
+import { User } from '../user/entity';
+import { compare } from '../common/utils';
+import { JwyPayloadInfo } from './type';
+
+@Injectable()
+export class AuthService {
+  constructor(
+    private readonly userService: UserService,
+    private readonly jwtService: JwtService,
+  ) {}
+
+  public async validateUserLocal(username: string, plainPassword: string): Promise<any> {
+    const user = await this.userService.findOneByUsername(username, true);
+
+    if (!user) {
+      throw new BadRequestException('用户名不正确！');
+    }
+
+    // 密码比对
+    if (!compare(plainPassword, user.password)) {
+      throw new BadRequestException('密码不正确！');
+    }
+
+    // 此处先将password显式删除，然后再返回，避免密码泄露！！！
+    delete user.password;
+
+    return user;
+  }
+
+  // 生成JWT
+  private createToken(jwyPayloadInfo: JwyPayloadInfo) {
+    return this.jwtService.sign(jwyPayloadInfo);
+  }
+
+  public signIn(user: Partial<User>) {
+    const token = this.createToken({
+      sub: `${user.id}`,
+      username: user.username,
+    });
+
+    return {
+      id: user.id,
+      username: user.username,
+      token,
+    };
+  }
+}
+```
+
+validateUserLocal方法收到用户名和密码后，先去数据库按用户名查一下，把它的加密后密码信息返回回来。然后，将用户传过来的未加密密码与数据库中查出来的加密密码进行比对。比对用的是bcryptjs的compareSync方法。如果比对匹配，则验证通过。否则验证失败。
+
+验证通过后，就会将user信息返回（注意返回时我们删除了用户密码，以免泄露）。
+
+#### auth.controller.ts
+
+```ts
+import { AuthGuard } from '@nestjs/passport';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import {
+  Controller,
+  UseGuards,
+  UseInterceptors,
+  Post,
+  Body,
+  Req,
+  ClassSerializerInterceptor,
+} from '@nestjs/common';
+import { SignInDto } from './dto';
+import { AuthService } from './auth.service';
+
+@ApiTags('鉴权模块')
+// 重要：为了将隐藏字段过滤掉，避免返回给客户端，造成密码泄露！！！
+// 虽然实际上我们已经在auth/auth.service.ts中显式地对密码字段做了删除，
+// 但为防止以后还有其它的隐藏字段被泄露，这里做个二次兜底
+@UseInterceptors(ClassSerializerInterceptor)
+@Controller('auth')
+export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  // 用户从登录页面输入用户名和密码，请求auth/login接口
+  // 先走passport的local策略，
+  @ApiOperation({ summary: '用户登录' })
+  @UseGuards(AuthGuard('local'))
+  @Post('signIn')
+  async signIn(@Body() signInDto: SignInDto, @Req() req) {
+    return this.authService.signIn(req.user);
+  }
+}
+```
+当用户进行登录的时候，会访问auth/signIn接口，这个接口因为应用了  @UseGuards(AuthGuard('local')) 装饰器，所以首先会走本地策略进行验证，验证了之后如上文所述，会返回user信息，这个user信息会被passport模块注入到req对象中。本地策略验证通过，就会让路由处理器来处理。所以我们可以在这里从req对象中取出user，然后交给authService的signIn方法处理。signIn方法发现将其中的信息按照JWT的payload的格式建议构造一下：
+
+```ts
+{
+  sub: `${user.id}`,
+  username: user.username,
+}
+```
+
+然后传给createToken方法去创建JWT。
+
+```ts
+private createToken(jwyPayloadInfo: JwyPayloadInfo) {
+  return this.jwtService.sign(jwyPayloadInfo);
+}
+```
+
+这里调用了JwtService的sign方法，这个JwtService是@nestjs/jwt模块内置提供的。
+
+这样，就得到了JWT token。
+
+JWT由头部（header）、有效载荷（payload）、签名（signature）三段组成，中间以.号连接。
+
+signIn方法得到JWT token后，将连同用户的id、username等信息一起返回。
+
+```ts
+{
+  id: user.id,
+  username: user.username,
+  token,
+}
+```
+
+auth.controller.ts收到auth.service.ts的signIn方法的结果后，返回给客户端。客户端收到这些信息后，就知道登录成功，并且把其中的token取出来存在localStorage中，下次请求的时候，在这个token前面加上一个前缀，拼成如下的形式：
+
+`Bearer ${token}`
+
+其中，Bearer加空格是前缀，后面就是token。把这个处理后的值放在请求头Authorization中。然后带着这个请求头去请求用户详情接口（/api/v1/user/:userId）。这个时候，因为我们在user/user.controller.ts的这个对应对接的路由处理器上装饰了@UseGuards(AuthGuard('jwt'))，这时就通过passport走jwt策略进行验证，就用到auth/jwt.strategy.ts文件了，如下：
+
+#### JWT策略：auth/jwt.strategy.ts
+
+```ts
+import { Injectable } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { PassportStrategy } from '@nestjs/passport';
+import { Strategy, StrategyOptions, ExtractJwt } from 'passport-jwt';
+import { AuthService } from './auth.service';
+
+@Injectable()
+export class JwtStrategy extends PassportStrategy(Strategy) {
+  constructor(
+    private readonly configService: ConfigService,
+    private readonly authService: AuthService,
+  ) {
+    super({
+      // 从请求中提取 JWT 的方法
+      jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
+      // 告诉passport模块，如果收到的是过期的 JWT ，将请求拒绝，发送 401 响应
+      ignoreExpiration: false,
+      // JWT加密和验证的密钥
+      secretOrKey: configService.get<string>('JWT_SECRET'),
+    } as StrategyOptions);
+  }
+
+  /**
+   * 你可能会有疑问，为什么这里的validate方法如此简单，根本没有校验的逻辑？
+   * 其实，这是因为基于 JWT 的策略，passport 模块会首先验证 JWT 的签名并解码成 JSON 。然后才会调用我们的 validate() 方法，并将解码后的 JSON 作为其单个参数传递进来。所以，那些JWT是否过期、是否合法以及相关的解成JSON的工作，都由passport模块完成了。
+   * 这里仍然提供validate方法，还有一个用处。因为JWT中存的只是很简单的用户信息，如果你需要返回更多的信息，可以基于JWT解出来的已有信息，在这个validate方法中进一步查询数据库，从而获得更丰富的信息，并将它们挂载到请求对象上。
+   * 此外，如果我们想实现令牌失效的功能。也可以在这一步来实现，首先，你需要持久化一个失效令牌的清单，然后，在这一步你可以根据用户的 id 或 username等信息，去失效令牌列表中查询，如果命中，这拒绝请求。
+   */
+  async validate(payload) {
+    return {
+      id: payload.sub,
+      username: payload.username,
+    };
+  }
+}
+```
+它和本地策略的外观形式是一致的，内部却不一样，主要是通过passport模块使用JWT的加密密钥、有效期等对token的有效性进行验证，并将token解析成JSON，获得里面的信息。如果验证通过，会将解出来的信息进行返回。并允许继续由路由处理器程序继续处理该请求。从而从数据库查询用户详情信息返回给用户。上面进行了详细的注释，可以看一下。
 
 ## 生命周期hooks
 
@@ -1895,16 +2203,16 @@ https://zhuanlan.zhihu.com/p/402207092
 [NestJS 带你飞！] DAY25 - Authorization & RBAC
 https://ithelp.ithome.com.tw/articles/10279982
 
-[NestJS 帶你飛！] DAY29 - 實戰演練 (上)
+[NestJS 带你飞！] DAY29 - 实战演练 (上)
 https://ithelp.ithome.com.tw/articles/10281463
 
-[NestJS 帶你飛！] DAY30 - 實戰演練 (中)
+[NestJS 带你飞！] DAY30 - 实战演练 (中)
 https://ithelp.ithome.com.tw/articles/10281757
 
-[NestJS 帶你飛！] DAY31 - 實戰演練 (下)
+[NestJS 带你飞！] DAY31 - 实战演练 (下)
 https://ithelp.ithome.com.tw/articles/10281933
 
-[NestJS 帶你飛！] DAY32 - 閉幕式
+[NestJS 带你飞！] DAY32 - 闭幕式
 https://ithelp.ithome.com.tw/articles/10281970
 
 

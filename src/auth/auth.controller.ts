@@ -10,6 +10,7 @@ import {
   ClassSerializerInterceptor,
 } from '@nestjs/common';
 import { SignInDto } from './dto';
+import { AuthService } from './auth.service';
 
 @ApiTags('鉴权模块')
 // 重要：为了将隐藏字段过滤掉，避免返回给客户端，造成密码泄露！！！
@@ -18,10 +19,14 @@ import { SignInDto } from './dto';
 @UseInterceptors(ClassSerializerInterceptor)
 @Controller('auth')
 export class AuthController {
+  constructor(private readonly authService: AuthService) {}
+
+  // 用户从登录页面输入用户名和密码，请求auth/login接口
+  // 先走passport的local策略，
   @ApiOperation({ summary: '用户登录' })
   @UseGuards(AuthGuard('local'))
   @Post('signIn')
-  async login(@Body() signInDto: SignInDto, @Req() req) {
-    return req.user;
+  async signIn(@Body() signInDto: SignInDto, @Req() req) {
+    return this.authService.signIn(req.user);
   }
 }

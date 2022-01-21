@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { UserController } from './user.controller';
 import { UserService } from './user.service';
-import { User } from './entity/user.entity';
+import { User } from './entity';
 
 @Module({
   imports: [
@@ -21,6 +21,8 @@ import { User } from './entity/user.entity';
   // Please make sure that the argument AppService at index[0]
   // is available in the AppModule context.
   providers: [UserService],
-  exports: [UserService],
+  exports: [
+    UserService,
+  ],
 })
 export class UserModule {}

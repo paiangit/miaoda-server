@@ -79,7 +79,7 @@ export class UserService {
     return this.usersRepository.findOne({ id: +id });
   }
 
-  // 按用户名称查询
+  // 按用户名查询
   // 第二个参数是返回的数据中是否需要包含密码，默认不包含，如果开启该选项，需要慎重评估
   // 除非是登录功能，其它情况一般返回的数据中都不应该包含密码
   public async findOneByUsername(username: string, containPassword: boolean = false) {
