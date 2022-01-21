@@ -13,7 +13,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UserService } from './user.service';
 import {
   CreateUserDto,
@@ -70,6 +70,7 @@ export class UserController {
   }
 
   @ApiOperation({ summary: '按id查询用户信息' })
+  @ApiBearerAuth() // swagger文档设置token
   @UseGuards(AuthGuard('jwt'))
   @Get(':id')
   async findOneById(@Param('id') id: string) {
@@ -82,6 +83,7 @@ export class UserController {
   }
 
   @ApiOperation({ summary: '更新用户的信息' })
+  @ApiBearerAuth()
   @UseGuards(AuthGuard('jwt'))
   @Put(':id')
   update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {

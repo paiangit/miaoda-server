@@ -1215,7 +1215,7 @@ pnpm add @nestjs/swagger swagger-ui-express -S
 +     .setDescription('这是miaoda项目的API文档，如有问题欢迎issue反馈') // 文档介绍
 +     .setVersion('0.1.0') // 接口版本号
 +     // .addTag('标签1, 标签2') // 这里可以添加多个标签，实际上是swagger的分类
-+     .addBearerAuth() // 增加全局进行 Authorization 验证
++     .addBearerAuth() // 增加全局进行 Authorization 验证的配置入口（会出现文字为Authorize，带小锁头的按钮）
 +     .build();
 +   const document = SwaggerModule.createDocument(app, options);
 +   // 用SwaggerModule类初始化swagger
@@ -2150,7 +2150,69 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   }
 }
 ```
-它和本地策略的外观形式是一致的，内部却不一样，主要是通过passport模块使用JWT的加密密钥、有效期等对token的有效性进行验证，并将token解析成JSON，获得里面的信息。如果验证通过，会将解出来的信息进行返回。并允许继续由路由处理器程序继续处理该请求。从而从数据库查询用户详情信息返回给用户。上面进行了详细的注释，可以看一下。
+它和本地策略的外观形式是一致的，内部却不一样，主要是通过passport模块使用JWT的加密密钥、有效期等对token的有效性进行验证，并将token解析成JSON，获得里面的信息。如果验证通过，会将解出来的信息进行返回。并允许继续由路由处理器程序继续处理该请求。从而从数据库查询用户详情信息返回给用户。
+
+另外，关于ExtractJwt.fromAuthHeaderAsBearerToken()值得说一下：
+
+ExtractJwt提供多种方式从请求中提取JWT，常见的方式有以下几种：
+
+- fromHeader：在Http 请求头中查找JWT
+
+- fromBodyField: 在请求的Body字段中查找JWT
+
+- fromAuthHeaderAsBearerToken：在授权标头带有Bearer方案中查找JWT
+
+我们采用的是fromAuthHeaderAsBearerToken，后面请求操作演示中可以看到，发送的请求头中需要带上,这种方案也是现在很多后端比较青睐的。
+
+其它的内容，上面进行了详细的注释，可以看一下。
+
+## 使用swagger来测试传递Bearer token
+
+首先，需要开启swagger页面的Authorize配置功能，见下面.addBearerAuth()这一行
+
+```ts
+const options = new DocumentBuilder()
+  .setTitle('Miaoda API文档') // 接口文档标题
+  .setDescription('这是miaoda项目的API文档，如有问题欢迎issue反馈') // 文档介绍
+  .setVersion('0.1.0') // 接口版本号
+  // .addTag('标签1, 标签2') // 这里可以添加多个标签，实际上是swagger的分类
++ .addBearerAuth() // 增加全局进行 Authorization 验证的配置入口（会出现文字为Authorize，带小锁头的按钮）
+  .build();
+```
+
+其次，需要在需要传递token的接口的路由处理器方法上加上@ApiBearerAuth()装饰器。
+
+```ts
+  @ApiOperation({ summary: '按id查询用户信息' })
++ @ApiBearerAuth() // swagger文档设置token
+  @UseGuards(AuthGuard('jwt'))
+  @Get(':id')
+  async findOneById(@Param('id') id: string) {
+    const user = await this.userService.findOneById(id);
+    if (user) {
+      return user;
+    } else {
+      throw new HttpException('没有符合条件的用户', 401);
+    }
+  }
+```
+
+第三，去swagger页面上请求一下/api/v1/user/signIn接口，请求成功后在请求结果栏上点download旁边那个复制按钮，把形如下面这样的请求结果复制出来：
+
+```json
+{
+  "code": 0,
+  "msg": "请求成功",
+  "data": {
+    "id": 1,
+    "username": "paian",
+    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxIiwidXNlcm5hbWUiOiJwYWlhbiIsImlhdCI6MTY0Mjc4NzUxNiwiZXhwIjoxNjQyODAxOTE2fQ.2tcb6VpzfP_IKbmoSjtmMdsslXTD1I2y5vYvuAPxx1E"
+  }
+}
+```
+然后点击Authorize按钮（带小锁头那个），把这个复制的内容粘贴到弹出的对话框的输入框中去，按回车确认。
+
+接着，你就可以照常测试需要传递token的那些接口了，swagger会自动帮你把token带上。这是swagger很好用的一个地方。
 
 ## 生命周期hooks
 

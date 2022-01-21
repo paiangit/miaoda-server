@@ -31,8 +31,8 @@ async function bootstrap() {
     .setTitle('Miaoda API文档') // 接口文档标题
     .setDescription('这是miaoda项目的API文档，如有问题欢迎issue反馈') // 文档介绍
     .setVersion('0.1.0') // 接口版本号
-    // .addTag('标签1, 标签2') // 这里可以添加多个标签，实际上是swagger的分类
-    .addBearerAuth() // 增加全局进行 Authorization 验证
+    .addTag('标签1, 标签2') // 这里可以添加多个标签，实际上是swagger的分类
+    .addBearerAuth() // 增加全局进行 Authorization 验证的配置入口（会出现文字为Authorize，带小锁头的按钮）
     .build();
   const document = SwaggerModule.createDocument(app, options);
 
