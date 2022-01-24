@@ -6,7 +6,7 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class SignInDto {
+export class LoginDto {
   @ApiProperty({ description: '用户名' })
   @MinLength(5, { message: '用户名不能小于5位' })
   @MaxLength(14, { message: '用户名不能超过14位' })

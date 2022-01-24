@@ -1641,7 +1641,7 @@ import {
   Req,
   ClassSerializerInterceptor,
 } from '@nestjs/common';
-import { SignInDto } from './dto';
+import { LoginDto } from './dto';
 
 @ApiTags('鉴权模块')
 // 重要：为了将隐藏字段过滤掉，避免返回给客户端，造成密码泄露！！！
@@ -1652,13 +1652,13 @@ import { SignInDto } from './dto';
 export class AuthController {
   @ApiOperation({ summary: '用户登录' })
   @UseGuards(AuthGuard('local'))
-  @Post('signIn')
-  async login(@Body() signInDto: SignInDto, @Req() req) {
+  @Post('login')
+  async login(@Body() loginDto: LoginDto, @Req() req) {
     return req.user;
   }
 }
 ```
-其中主要注册了一个路由处理函数，就是处理 /auth/signIn 这个路由的。用户会传入SignInDto格式的登录信息（实际上就是用户名、密码）。这里用到了AuthGuard('local')。
+其中主要注册了一个路由处理函数，就是处理 /auth/login 这个路由的。用户会传入LoginDto格式的登录信息（实际上就是用户名、密码）。这里用到了AuthGuard('local')。
 
 这里用到了守卫，所以我们得先补充一下守卫的相关知识。
 
@@ -1725,8 +1725,8 @@ export class AppModule {}
 export class AuthController {
   @ApiOperation({ summary: '用户登录' })
   @UseGuards(AuthGuard('local'))
-  @Post('signIn')
-  async login(@Body() signInDto: SignInDto, @Req() req) {
+  @Post('login')
+  async login(@Body() loginDto: LoginDto, @Req() req) {
     return req.user;
   }
 }
@@ -1771,7 +1771,7 @@ export class LocalStrategy extends PassportStrategy(Strategy) {
 我们看到，auth/localstrategy.ts就是一个@Injectable()装饰的，扩展自PassportStrategy(Strategy)，而且实现了一个validate方法的类。实际上，passport的策略都是这样的类。在这个validate方法中，调用了AuthService的validateUser方法，查询到username、password所对应的用户，并把这个用户的信息返回。这个用户的信息将被混入到请求的request对象中，所以
 
 ```ts
-async login(@Body() signInDto: SignInDto, @Req() req) {
+async login(@Body() loginDto: LoginDto, @Req() req) {
   return req.user;
 }
 ```
@@ -1814,7 +1814,7 @@ AuthService是怎么实现的呢？它在构造函数中注入了UserService的�
 这里有个细节就是，加密后的密码就不要返回给客户端了，所以我们特地把它从用户信息中过滤掉，防止密码泄露。
 
 
-#### 添加auth/dto/sign-in.dto.ts
+#### 添加auth/dto/login.dto.ts
 
 ```ts
 import {
@@ -1825,7 +1825,7 @@ import {
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
-export class SignInDto {
+export class LoginDto {
   @ApiProperty({ description: '用户名' })
   @MinLength(5, { message: '用户名不能小于5位' })
   @MaxLength(14, { message: '用户名不能超过14位' })
@@ -2017,7 +2017,7 @@ export class AuthService {
     return this.jwtService.sign(jwyPayloadInfo);
   }
 
-  public signIn(user: Partial<User>) {
+  public login(user: Partial<User>) {
     const token = this.createToken({
       sub: `${user.id}`,
       username: user.username,
@@ -2050,7 +2050,7 @@ import {
   Req,
   ClassSerializerInterceptor,
 } from '@nestjs/common';
-import { SignInDto } from './dto';
+import { LoginDto } from './dto';
 import { AuthService } from './auth.service';
 
 @ApiTags('鉴权模块')
@@ -2066,13 +2066,13 @@ export class AuthController {
   // 先走passport的local策略，
   @ApiOperation({ summary: '用户登录' })
   @UseGuards(AuthGuard('local'))
-  @Post('signIn')
-  async signIn(@Body() signInDto: SignInDto, @Req() req) {
-    return this.authService.signIn(req.user);
+  @Post('login')
+  async login(@Body() loginDto: LoginDto, @Req() req) {
+    return this.authService.login(req.user);
   }
 }
 ```
-当用户进行登录的时候，会访问auth/signIn接口，这个接口因为应用了  @UseGuards(AuthGuard('local')) 装饰器，所以首先会走本地策略进行验证，验证了之后如上文所述，会返回user信息，这个user信息会被passport模块注入到req对象中。本地策略验证通过，就会让路由处理器来处理。所以我们可以在这里从req对象中取出user，然后交给authService的signIn方法处理。signIn方法发现将其中的信息按照JWT的payload的格式建议构造一下：
+当用户进行登录的时候，会访问auth/login接口，这个接口因为应用了  @UseGuards(AuthGuard('local')) 装饰器，所以首先会走本地策略进行验证，验证了之后如上文所述，会返回user信息，这个user信息会被passport模块注入到req对象中。本地策略验证通过，就会让路由处理器来处理。所以我们可以在这里从req对象中取出user，然后交给authService的login方法处理。login方法发现将其中的信息按照JWT的payload的格式建议构造一下：
 
 ```ts
 {
@@ -2095,7 +2095,7 @@ private createToken(jwyPayloadInfo: JwyPayloadInfo) {
 
 JWT由头部（header）、有效载荷（payload）、签名（signature）三段组成，中间以.号连接。
 
-signIn方法得到JWT token后，将连同用户的id、username等信息一起返回。
+login方法得到JWT token后，将连同用户的id、username等信息一起返回。
 
 ```ts
 {
@@ -2105,7 +2105,7 @@ signIn方法得到JWT token后，将连同用户的id、username等信息一起�
 }
 ```
 
-auth.controller.ts收到auth.service.ts的signIn方法的结果后，返回给客户端。客户端收到这些信息后，就知道登录成功，并且把其中的token取出来存在localStorage中，下次请求的时候，在这个token前面加上一个前缀，拼成如下的形式：
+auth.controller.ts收到auth.service.ts的login方法的结果后，返回给客户端。客户端收到这些信息后，就知道登录成功，并且把其中的token取出来存在localStorage中，下次请求的时候，在这个token前面加上一个前缀，拼成如下的形式：
 
 `Bearer ${token}`
 
@@ -2197,7 +2197,7 @@ const options = new DocumentBuilder()
   }
 ```
 
-第三，去swagger页面上请求一下/api/v1/user/signIn接口，请求成功后在请求结果栏上点download旁边那个复制按钮，把形如下面这样的请求结果复制出来：
+第三，去swagger页面上请求一下/api/v1/user/login接口，请求成功后在请求结果栏上点download旁边那个复制按钮，把形如下面这样的请求结果复制出来：
 
 ```json
 {

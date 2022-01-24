@@ -35,7 +35,7 @@ export class AuthService {
     return this.jwtService.sign(jwyPayloadInfo);
   }
 
-  public signIn(user: Partial<User>) {
+  public login(user: Partial<User>) {
     const token = this.createToken({
       sub: `${user.id}`,
       username: user.username,

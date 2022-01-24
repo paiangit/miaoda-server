@@ -1,5 +1,5 @@
 import { AuthGuard } from '@nestjs/passport';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import {
   Controller,
   UseGuards,
@@ -9,7 +9,7 @@ import {
   Req,
   ClassSerializerInterceptor,
 } from '@nestjs/common';
-import { SignInDto } from './dto';
+import { LoginDto } from './dto';
 import { AuthService } from './auth.service';
 
 @ApiTags('鉴权模块')
@@ -25,8 +25,9 @@ export class AuthController {
   // 先走passport的local策略，
   @ApiOperation({ summary: '用户登录' })
   @UseGuards(AuthGuard('local'))
-  @Post('signIn')
-  async signIn(@Body() signInDto: SignInDto, @Req() req) {
-    return this.authService.signIn(req.user);
+  @Post('login')
+  async login(@Body() loginDto: LoginDto, @Req() req) {
+    return this.authService.login(req.user);
+  }
   }
 }
