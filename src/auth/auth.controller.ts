@@ -29,5 +29,14 @@ export class AuthController {
   async login(@Body() loginDto: LoginDto, @Req() req) {
     return this.authService.login(req.user);
   }
+
+  @Post('checkLogin')
+  @ApiOperation({ summary: '校验是否已登录' })
+  @ApiBearerAuth()
+  @UseGuards(AuthGuard('jwt'))
+  async checkLogin() {
+    return {
+      isValid: true,
+    };
   }
 }

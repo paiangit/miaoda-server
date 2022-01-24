@@ -2214,6 +2214,22 @@ const options = new DocumentBuilder()
 
 接着，你就可以照常测试需要传递token的那些接口了，swagger会自动帮你把token带上。这是swagger很好用的一个地方。
 
+## 添加校验是否已登录的接口
+
+在auth/auth.controller.ts上增加：
+
+```ts
+@Post('checkLogin')
+@ApiOperation({ summary: '校验是否已登录' })
+@ApiBearerAuth()
+@UseGuards(AuthGuard('jwt'))
+async checkLogin() {
+  return {
+    isValid: true,
+  };
+}
+```
+
 ## 生命周期hooks
 
 运用Lifecycle Hooks 可以有效地在适当时机点做适当的动作，以关闭时调用的Hook 来说，通常会用在Kubernetes等服务上。
