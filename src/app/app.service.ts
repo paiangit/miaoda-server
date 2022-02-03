@@ -58,8 +58,11 @@ export class AppService {
     .take(pageSize) // 最多获取pageSize条数据
     .getMany();
 
+    // 过滤掉已被删除的应用
+    const filteredData = data.filter(item => item.status !== 0);
+
     return {
-      data,
+      data: filteredData,
       totalCount,
       offset: offset + data.length,
       pageSize,
