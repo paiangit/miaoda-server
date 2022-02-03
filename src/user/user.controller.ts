@@ -56,11 +56,11 @@ export class UserController {
       pageSize = parseInt(`${paginationRequestDto.pageSize}`, 10);
       offset = parseInt(`${paginationRequestDto.offset}`, 10);
     } catch(err) {
-      throw new HttpException('请求参数格式错误', 401);
+      throw new HttpException('请求参数格式错误', 400);
     }
 
     if (Number.isNaN(pageSize) || Number.isNaN(offset)) {
-      throw new HttpException('请求参数格式错误', 401);
+      throw new HttpException('请求参数格式错误', 400);
     }
 
     return this.userService.list({
@@ -78,7 +78,7 @@ export class UserController {
     if (user) {
       return user;
     } else {
-      throw new HttpException('没有符合条件的用户', 401);
+      throw new HttpException('没有符合条件的用户', 400);
     }
   }
 

@@ -38,7 +38,7 @@ export class UserService {
     const user = await this.findOneById(id);
 
     if (!user) {
-      throw new HttpException(`id为${id}的用户不存在`, 401);
+      throw new HttpException(`id为${id}的用户不存在`, 400);
     }
 
     user.status = UserStatus.REMOVED;
@@ -47,7 +47,7 @@ export class UserService {
       await this.update(id, user);
       return {};
     } catch(err) {
-      throw new HttpException(`删除失败`, 401);
+      throw new HttpException('删除失败', 400);
     }
   }
 

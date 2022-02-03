@@ -1,7 +1,6 @@
 import {
   IsNotEmpty,
   IsString,
-  IsEnum,
   MinLength,
   MaxLength,
 } from 'class-validator';
