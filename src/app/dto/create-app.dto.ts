@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsNotEmpty, IsString, MaxLength, MinLength } from "class-validator";
+import { IsNotEmpty, IsString, IsNumber, MaxLength, MinLength } from "class-validator";
 import { AppThemeColor } from "../type";
 
 export class CreateAppDto {
@@ -20,6 +20,6 @@ export class CreateAppDto {
 
   @ApiProperty({ description: '主题颜色' })
   @IsNotEmpty({ message: '主题颜色不能为空' })
-  @IsString()
+  @IsNumber()
   themeColor: AppThemeColor;
 }
