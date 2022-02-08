@@ -790,6 +790,24 @@ async fuzzFindByRepository(username: string) {
 其它的模糊查询写法可以参考这个：
 https://github.com/nest-cn-community/issues-box/issues/3
 
+### Not查询（不等于查询）
+
+```ts
+import { Not, Like } from 'typeorm';
+apps = await this.appsRepository.createQueryBuilder('app')
+  .where({
+    title: Like(`%${title}%`), // 模糊查询寻
+    status: Not(AppStatus.REMOVED), // Not查询
+  });
+```
+
+用下面这种写法也行：
+
+```ts
+.where('app.status != :status', {status: AppStatus.REMOVED})
+```
+
+做的不等于查询的时候，要注意Not()参数的类型，对于DTO中字段是enum类型的，则应该Not()参数应该是字符串类型。对于DTO中字段是int和tynint类型的，则Not()参数应该是数字类型。
 ### 类型层
 
 每个模块内部单独抽出一个type文件夹，里面放置该模块的类型。其中一个文件专门放置enum类型，另一些文件可以放置type、interface等。最后通过type/index.ts导出去：

@@ -1,6 +1,6 @@
 import { HttpException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not, Like } from 'typeorm';
 import { App } from './entity';
 import { CreateAppDto, PaginationRequestDto, PaginationResultDto, UpdateAppDto } from './dto';
 import { AppStatus } from './type';
@@ -46,9 +46,12 @@ export class AppService {
     let apps;
     if (title) {
       apps = await this.appsRepository.createQueryBuilder('app')
-        .where('app.title like :title', { title: `%${title}%` });
+        .where({ title: Like(`%${title}%`), status: Not(AppStatus.REMOVED) });
     } else {
-      apps = await this.appsRepository.createQueryBuilder('app');
+      apps = await this.appsRepository.createQueryBuilder('app')
+        .where({ status: Not(AppStatus.REMOVED) });
+        // 等价于
+        // .where('app.status != :status', { status: AppStatus.REMOVED });
     }
 
     const totalCount = await apps.getCount();
@@ -58,11 +61,8 @@ export class AppService {
     .take(pageSize) // 最多获取pageSize条数据
     .getMany();
 
-    // 过滤掉已被删除的应用
-    const filteredData = data.filter(item => item.status !== 0);
-
     return {
-      data: filteredData,
+      data,
       totalCount,
       offset: offset + data.length,
       pageSize,

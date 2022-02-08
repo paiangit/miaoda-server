@@ -41,8 +41,7 @@ export class App extends DateEntity {
   @ApiPropertyOptional({ description: '应用状态' })
   @Column({
     comment: '应用状态',
-    type: 'enum',
-    enum: AppStatus,
+    type: 'tinyint',
     nullable: true,
     default: AppStatus.OFF_LINE,
   })
@@ -52,8 +51,7 @@ export class App extends DateEntity {
   @Column({
     name: 'theme_color',
     comment: '应用主题颜色',
-    type: 'enum',
-    enum: AppThemeColor,
+    type: 'tinyint',
     nullable: true,
     default: AppThemeColor.BLUE
   })
