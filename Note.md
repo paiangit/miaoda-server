@@ -8,7 +8,7 @@ pnpm install
 pnpm start:debug
 ```
 
-这样就可以通过http://localhost:3000来访问了。
+这样就可以通过http://localhost:4000来访问了。
 
 pnpm的使用参见：https://pnpm.io/zh/pnpm-cli。
 
@@ -17,7 +17,7 @@ pnpm的使用参见：https://pnpm.io/zh/pnpm-cli。
 
 使用pnpm start:debug启动应用的情况下，支持进行调试。
 
-先到Chrome浏览器下通过访问chrome://inspect/#pages，找到对应的页面（比如：http://localhost:3000/api/v1/user/list?pageSize=30&offset=0）点击inspect进行调试。
+先到Chrome浏览器下通过访问chrome://inspect/#pages，找到对应的页面（比如：http://localhost:4000/api/v1/user/list?pageSize=30&offset=0）点击inspect进行调试。
 
 进去之后，打开Chrome DevTools，然后点击其中六边形的那个Node.js图标，进到Node.js调试面板，然后切换到Source选显卡。
 
@@ -99,7 +99,7 @@ exports：导出服务的列表，供其它模块导入使用。如果希望当�
 app.setGlobalPrefix('/api/v1');
 ```
 
-这样就可以通过 http://localhost:3000/api/v1 来访问了。
+这样就可以通过 http://localhost:4000/api/v1 来访问了。
 
 ## 实现一个User模块
 
@@ -252,23 +252,23 @@ export class AppModule {}
 
 创建用户：
 GET
-http://localhost:3000/api/v1/user/create
+http://localhost:4000/api/v1/user/create
 
 删除用户：
 DELETE
-http://localhost:3000/api/v1/user/:id
+http://localhost:4000/api/v1/user/:id
 
 更新用户信息：
 PUT
-http://localhost:3000/api/v1/user/:id
+http://localhost:4000/api/v1/user/:id
 
 查询用户列表：
 GET
-http://localhost:3000/api/v1/user/list?pageSize=xxx&offset=yyy
+http://localhost:4000/api/v1/user/list?pageSize=xxx&offset=yyy
 
 按id查询用户信息：
 GET
-http://localhost:3000/api/v1/user/:id
+http://localhost:4000/api/v1/user/:id
 
 ## 准备数据库
 
@@ -366,7 +366,7 @@ export class PaginationRequestDto {
 +   app.useGlobalPipes(new ValidationPipe());
     // 添加路由前缀
     app.setGlobalPrefix('/api/v1');
-    await app.listen(3000);
+    await app.listen(4000);
   }
   bootstrap();
 ```
@@ -959,7 +959,7 @@ async create(@Body() createUserDto: CreateUserDto) {
     app.useGlobalPipes(new ValidationPipe());
     // 添加路由前缀
     app.setGlobalPrefix('/api/v1');
-    await app.listen(3000);
+    await app.listen(4000);
   }
 
   bootstrap();
@@ -1043,7 +1043,7 @@ export class TransformInterceptor implements NestInterceptor {
     app.setGlobalPrefix('/api/v1');
     // 全局注册拦截器
 +   app.useGlobalInterceptors(new ResponseInterceptor());
-    await app.listen(3000);
+    await app.listen(4000);
   }
 
   bootstrap();
@@ -1195,7 +1195,7 @@ export class ApplicationModule implements NestModule {
 ```ts
 const app = await NestFactory.create(AppModule);
 app.use(logger);
-await app.listen(3000);
+await app.listen(4000);
 ```
 
 ### 使用@nestjs/swagger和swagger-ui-express快速搭建API文档
@@ -1238,16 +1238,16 @@ pnpm add @nestjs/swagger swagger-ui-express -S
 +   const document = SwaggerModule.createDocument(app, options);
 +   // 用SwaggerModule类初始化swagger
 +   // SwaggerModule.setup()第一个参数是接口访问路径
-+   // 启动或就可以通过访问http://localhost:3000/api来查看到接口文档了
++   // 启动或就可以通过访问http://localhost:4000/api来查看到接口文档了
 +   SwaggerModule.setup('/api', app, document);
 
-    await app.listen(3000);
+    await app.listen(4000);
   }
 
   bootstrap();
 ```
 
-这样，启动服务或就可以通过访问 http://localhost:3000/api 来查看到接口文档了。
+这样，启动服务或就可以通过访问 http://localhost:4000/api 来查看到接口文档了。
 
 SwaggerModule寻找所有的使用@Body()，@Query()以及@Param()在路由处理器装饰。因此，可以创建有效的文档。该模块利用反射创建相应的模型定义。
 
@@ -1565,7 +1565,7 @@ https://juejin.cn/post/6891894638618755085
 ```ts
 const app = await NestFactory.create(AppModule);
 app.enableCors({
-  origin: 'http://localhost', // 允许哪个域名跨域访问
+  origin: 'http://localhost:3000', // 允许哪个域名跨域访问
   methods: [ // 允许跨域访问哪些方法
     'GET',
     'POST',

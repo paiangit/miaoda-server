@@ -3,7 +3,7 @@ export default {
   host: 'localhost',
   port: 3306,
   username: 'root',
-  password: '',
+  password: '12345678',
   database: 'miaoda',
   logging: false,
   timezone: '+08:00', // 服务器上配置的时区

@@ -17,7 +17,7 @@ async function bootstrap() {
   app.useGlobalInterceptors(new ResponseInterceptor());
   // 允许跨域
   app.enableCors({
-    origin: 'http://localhost',
+    origin: 'http://localhost:3000',
     methods: [
       'GET',
       'POST',
@@ -38,9 +38,9 @@ async function bootstrap() {
 
   // 用SwaggerModule类初始化swagger
   // SwaggerModule.setup()第一个参数是接口访问路径
-  // 启动或就可以通过访问http://localhost:3000/docs来查看到接口文档了
+  // 启动或就可以通过访问http://localhost:4000/docs来查看到接口文档了
   SwaggerModule.setup('/docs', app, document);
-  await app.listen(3000);
+  await app.listen(4000);
 }
 
 bootstrap();
