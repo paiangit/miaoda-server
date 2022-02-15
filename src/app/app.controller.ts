@@ -1,15 +1,29 @@
-import { Body, Controller, Delete, HttpException, Param, Get, Post, Query, Put, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  HttpException,
+  Param,
+  Get,
+  Post,
+  Query,
+  Put,
+  UseGuards,
+} from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AppService } from './app.service';
-import { CreateAppDto, UpdateAppDto, PaginationRequestDto, PaginationResultDto } from './dto';
+import {
+  CreateAppDto,
+  UpdateAppDto,
+  PaginationRequestDto,
+  PaginationResultDto,
+} from './dto';
 
 @ApiTags('应用模块')
 @Controller('app')
 export class AppController {
-  constructor(
-    private readonly appService: AppService
-  ){}
+  constructor(private readonly appService: AppService) {}
 
   @ApiOperation({ summary: '创建应用' })
   @ApiBearerAuth()
@@ -32,18 +46,20 @@ export class AppController {
   @UseGuards(AuthGuard('jwt'))
   @Get('list')
   list(
-    @Query() paginationRequestDto: PaginationRequestDto,
+    @Query() paginationRequestDto: PaginationRequestDto & {userId: number},
   ): Promise<PaginationResultDto> {
     const PAGE_SIZE_LIMIT = 50;
     let pageSize;
     let offset;
     let title = '';
+    let userId;
 
     try {
       pageSize = parseInt(`${paginationRequestDto.pageSize}`, 10);
       offset = parseInt(`${paginationRequestDto.offset}`, 10);
       title = paginationRequestDto.title;
-    } catch(err) {
+      userId = parseInt(`${paginationRequestDto.userId}`, 10);
+    } catch (err) {
       throw new HttpException('请求参数格式错误', 400);
     }
 
@@ -54,6 +70,7 @@ export class AppController {
     const params = {
       offset,
       pageSize: Math.min(PAGE_SIZE_LIMIT, pageSize),
+      userId,
     };
     title && ((params as PaginationRequestDto).title = title);
 

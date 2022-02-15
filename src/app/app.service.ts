@@ -41,25 +41,29 @@ export class AppService {
   }
 
   // 获取应用列表
-  public async list(paginationRequestDto: PaginationRequestDto): Promise<PaginationResultDto> {
-    const { pageSize, offset, title } = paginationRequestDto;
+  public async list(paginationRequestDto: PaginationRequestDto & { userId: number }): Promise<PaginationResultDto> {
+    const { pageSize, offset, title, userId } = paginationRequestDto;
     let apps;
     if (title) {
-      apps = await this.appsRepository.createQueryBuilder('app')
-        .where({ title: Like(`%${title}%`), status: Not(AppStatus.REMOVED) });
+      apps = await this.appsRepository.createQueryBuilder('app').where({
+          title: Like(`%${title}%`),
+          status: Not(AppStatus.REMOVED),
+          creatorId: userId,
+        });
     } else {
-      apps = await this.appsRepository.createQueryBuilder('app')
-        .where({ status: Not(AppStatus.REMOVED) });
+      apps = await this.appsRepository
+        .createQueryBuilder('app')
+        .where({ status: Not(AppStatus.REMOVED), creatorId: userId });
         // 等价于
         // .where('app.status != :status', { status: AppStatus.REMOVED });
     }
 
     const totalCount = await apps.getCount();
     const data = await apps
-    .orderBy('created_at', 'DESC')
-    .skip(offset) // 跳过多少前面页的数据
-    .take(pageSize) // 最多获取pageSize条数据
-    .getMany();
+      .orderBy('created_at', 'DESC')
+      .skip(offset) // 跳过多少前面页的数据
+      .take(pageSize) // 最多获取pageSize条数据
+      .getMany();
 
     return {
       data,
