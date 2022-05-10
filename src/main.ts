@@ -4,6 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ApplicationModule } from './application.module';
 import { HttpExceptionFilter } from './common/filter';
 import { ResponseInterceptor } from './common/interceptor';
+import { initSentry } from './common/utils';
 
 async function bootstrap() {
   const app = await NestFactory.create(ApplicationModule);
@@ -18,13 +19,11 @@ async function bootstrap() {
   // 允许跨域
   app.enableCors({
     origin: 'http://localhost:3000',
-    methods: [
-      'GET',
-      'POST',
-      'PUT',
-      'DELETE',
-    ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'HEAD', 'OPTIONS', 'PATCH'],
   });
+
+  // 初始化sentry监控
+  initSentry();
 
   // 设置swagger文档
   const options = new DocumentBuilder()

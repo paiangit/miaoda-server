@@ -21,8 +21,6 @@ import { User } from './entity';
   // Please make sure that the argument AppService at index[0]
   // is available in the AppModule context.
   providers: [UserService],
-  exports: [
-    UserService,
-  ],
+  exports: [UserService],
 })
 export class UserModule {}

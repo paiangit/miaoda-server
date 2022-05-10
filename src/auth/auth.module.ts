@@ -8,15 +8,18 @@ import { AuthService } from './auth.service';
 import { UserModule } from '../user/user.module';
 import { LocalStrategy } from './local.strategy';
 
+// 根据环境变换环境变量来切换配置文件
+const env = String(process?.env?.NODE_ENV ?? 'development');
+const envFilePath = resolve(__dirname, `../../.env.${env}`);
+
 const jwtModule: DynamicModule = JwtModule.registerAsync({
   imports: [
     ConfigModule.forRoot({
-      // TODO: 这里需要根据环境变换环境变量配置文件
-      envFilePath: resolve(__dirname, '../../.env.development'),
-    })
+      envFilePath,
+    }),
   ],
   inject: [ConfigService],
-  useFactory: async(configService: ConfigService) => {
+  useFactory: async (configService: ConfigService) => {
     // 从环境变量配置文件读取配置信息
     const secret = configService.get('JWT_SECRET');
     const expiresIn = configService.get('JWT_EXPIRES_IN');
@@ -31,11 +34,7 @@ const jwtModule: DynamicModule = JwtModule.registerAsync({
 });
 
 @Module({
-  imports: [
-    UserModule,
-    ConfigModule,
-    jwtModule,
-  ],
+  imports: [UserModule, ConfigModule, jwtModule],
   controllers: [AuthController],
   providers: [AuthService, LocalStrategy, ConfigService, JwtStrategy],
   exports: [],

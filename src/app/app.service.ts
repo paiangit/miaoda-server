@@ -9,8 +9,8 @@ import { AppStatus } from './type';
 export class AppService {
   constructor(
     @InjectRepository(App)
-    private appsRepository: Repository<App>
-  ){}
+    private appsRepository: Repository<App>,
+  ) {}
 
   public async create(createAppDto: CreateAppDto) {
     const entity = Object.assign(new App(), createAppDto);
@@ -30,7 +30,7 @@ export class AppService {
     try {
       await this.update(id, app);
       return {};
-    } catch(err) {
+    } catch (err) {
       throw new HttpException('删除失败', 400);
     }
   }

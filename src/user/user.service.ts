@@ -14,7 +14,7 @@ import { UserStatus } from './type';
 export class UserService {
   constructor(
     @InjectRepository(User)
-    private usersRepository: Repository<User>
+    private usersRepository: Repository<User>,
   ) {}
 
   // 创建用户
@@ -46,7 +46,7 @@ export class UserService {
     try {
       await this.update(id, user);
       return {};
-    } catch(err) {
+    } catch (err) {
       throw new HttpException('删除失败', 400);
     }
   }
@@ -58,10 +58,14 @@ export class UserService {
     const existSameNameUser = await this.usersRepository.findOne({ username });
     // 校验是否已存在别的记录username与当前username冲突的情况
     if (existSameNameUser && formattedId !== existSameNameUser.id) {
-      throw new HttpException(`操作失败，其它记录中username为${username}的用户已经存在`, 401);
+      throw new HttpException(
+        `操作失败，其它记录中username为${username}的用户已经存在`,
+        401,
+      );
     }
 
-    const originUser = await this.usersRepository.createQueryBuilder('user')
+    const originUser = await this.usersRepository
+      .createQueryBuilder('user')
       .where('user.id = :id', { id: formattedId })
       // .addSelect('user.password') // 将隐藏的password列的信息也包含在查询结果中
       .getOne();
@@ -82,7 +86,7 @@ export class UserService {
   // 按用户名查询
   // 第二个参数是返回的数据中是否需要包含密码，默认不包含，如果开启该选项，需要慎重评估
   // 除非是登录功能，其它情况一般返回的数据中都不应该包含密码
-  public async findOneByUsername(username: string, containPassword: boolean = false) {
+  public async findOneByUsername(username: string, containPassword = false) {
     if (!containPassword) {
       return await this.usersRepository.findOne({ username });
     }
@@ -97,11 +101,14 @@ export class UserService {
   }
 
   // 查找所有用户
-  public async list(paginationRequestDto: PaginationRequestDto): Promise<PaginationResultDto> {
+  public async list(
+    paginationRequestDto: PaginationRequestDto,
+  ): Promise<PaginationResultDto> {
     const totalCount = await this.usersRepository.count();
     const { pageSize, offset } = paginationRequestDto;
 
-    const users = await this.usersRepository.createQueryBuilder('user') // 参数'user'是别名
+    const users = await this.usersRepository
+      .createQueryBuilder('user') // 参数'user'是别名
       .where('user.status != :status', { status: -1 }) // 选择状态不等于-1（被删除）的元素，这里的user用的就是上一行中定义的别名
       .orderBy('created_at', 'DESC') // 降序排列，注意这里传入的数据库字段中的名字，所以是created_at而不是createdAt
       .skip(offset) // 跳过多少前面页的数据

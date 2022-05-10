@@ -363,7 +363,12 @@ export class PaginationRequestDto {
   async function bootstrap() {
     const app = await NestFactory.create(AppModule);
     // 能进行请求参数验证、请求接口地址有效性验证
-+   app.useGlobalPipes(new ValidationPipe());
++   app.useGlobalPipes(new ValidationPipe(
+      // {
+      //   transform: true,
+      //   dismissDefaultMessages: true, // If set to true, the validation will not use default messages. Error message always will be undefined if its not explicitly set.
+      // }
++    ));
     // 添加路由前缀
     app.setGlobalPrefix('/api/v1');
     await app.listen(4000);
@@ -1571,7 +1576,15 @@ app.enableCors({
     'POST',
     'PUT',
     'DELETE',
+    'HEAD',
+    'OPTIONS',
+    'PATCH',
   ],
+  // preflightContinue: false,
+  // optionsSuccessStatus: 204,
+  // credentials: true,
+  // maxAge: 60,
+  // allowedHeaders: ['Accept', 'Content-Type', 'miaoda-token'],
 });
 ```
 
@@ -1895,12 +1908,15 @@ import { AuthService } from './auth.service';
 import { UserModule } from '../user/user.module';
 import { LocalStrategy } from './local.strategy';
 
+// 根据环境变换环境变量来切换配置文件
+const env = String(process?.env?.NODE_ENV ?? 'development');
+const envFilePath = resolve(__dirname, `../../.env.${env}`);
+
 const jwtModule: DynamicModule = JwtModule.registerAsync({
   imports: [
     ConfigModule.forRoot({
-      // TODO: 这里需要根据环境变换环境变量配置文件
-      envFilePath: resolve(__dirname, '../../.env.development'),
-    })
+      envFilePath,
+    }),
   ],
   inject: [ConfigService],
   useFactory: async(configService: ConfigService) => {
@@ -2257,6 +2273,46 @@ Nest 的Lifecycle Hooks 共有五个，主要是在「启动」与「关闭」�
 五个Hook 分别为：onModuleInit、onApplicationBootstrap、onModuleDestroy、beforeApplicationShutdown与onApplicationShutdown。
 
 关闭时调用的Hook 需要透过 app.enableShutdownHooks() 来启用此功能。
+
+## 接入sentry
+
+```js
+pnpm add @sentry/node @sentry/tracing
+```
+
+```ts
+import * as Sentry from '@sentry/node';
+import * as Tracing from '@sentry/tracing';
+
+export function initSentry() {
+  Sentry.init({
+    dsn: 'http://3db7aaa14aa241e9a57755fc95f31423@localhost:9000/3',
+    tracesSampleRate: 1.0,
+  });
+
+  const transaction = Sentry.startTransaction({
+    op: 'test',
+    name: 'My first test transaction',
+  });
+
+  setTimeout(() => {
+    try {
+      // 制造一个错误
+      // @ts-ignore
+      foo();
+    } catch (e) {
+      Sentry.captureException(e);
+    } finally {
+      transaction.finish();
+    }
+  }, 99);
+}
+```
+
+```ts
+pnpm add  @sentry/cli -D
+./node_modules/.bin/sentry-cli login
+```
 
 ## 关于NestJS的一些参考资料：
 
